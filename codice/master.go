@@ -2,7 +2,7 @@ package main
 
 import (
 	"container/list"
-	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -34,16 +34,22 @@ func min(V []int, T []int, index int) bool {
 func (api *Api) GetRequest(args *Req, reply *bool) error {
 	*reply = false
 	reqList.PushFront(*args)
-	fmt.Print("Richiesta con timestamp ")
-	fmt.Print((*args).Timestamp)
-	fmt.Print("dal processo")
-	fmt.Println(args.P)
-	next[(*args).P-1] = (*args).Timestamp[(*args).P-1]
+	log.Println("Token requested by process ", (*args).P, " with timestamp: ", (*args).Timestamp)
 	if token {
 		for e := reqList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Req)
-			if min(next, item.Timestamp, (*args).P) { //vanno sistemate alcune cose
-				*reply = true
+			if min(next, item.Timestamp, item.P) {
+				if item.P == (*args).P {
+					log.Println("Token sent to process ", item.P)
+					next[(*args).P-1] = (*args).Timestamp[(*args).P-1]
+					*reply = true
+				} /*else {
+					fmt.Println("Sono nell'else strano")
+					next[item.P-1] = item.Timestamp[item.P-1]
+					reply1 := true
+					client, _ := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
+					client.Call("API.SendToken", &reply1, nil)
+				}*/
 				token = false
 				reqList.Remove(e)
 				break
@@ -56,16 +62,22 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 func (api *Api) ReturnToken(args *bool, reply *int) error {
 	token = *args
 	if token {
-		fmt.Println("Ho di nuovo il token")
+		log.Println("Token returned to coordinator")
 		for e := reqList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Req)
 			if min(next, item.Timestamp, item.P) {
-				fmt.Println("sto inviando il token di nuovo")
+				next[item.P-1] = item.Timestamp[item.P-1]
 				token = false
 				reply := true
-				fmt.Println(item.P)
-				client, _ := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
-				client.Call("API.SendToken", &reply, nil)
+				client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
+				if err != nil {
+					log.Fatalln("Process ", item.P, " cannot be reached with error: ", err)
+				}
+				err = client.Call("API.SendToken", &reply, nil)
+				if err != nil {
+					log.Fatalln("Token cannot be sent to process ", item.P, " with error: ", err)
+				}
+				log.Println("Token sent to process ", item.P)
 				reqList.Remove(e)
 				break
 			}
@@ -75,12 +87,16 @@ func (api *Api) ReturnToken(args *bool, reply *int) error {
 }
 
 func Master(n int) {
+	log.Println("Centralized token algorithm coordinator started")
 	token = true
-	fmt.Println("Sono il master")
 	N = n
 	next = make([]int, N)
 	rpc.RegisterName("API", new(Api))
 	rpc.HandleHTTP()
-	lis, _ := net.Listen("tcp", ":8000")
+	lis, e := net.Listen("tcp", ":8000")
+	if e != nil {
+		log.Fatalln("Listen failed with error:", e)
+	}
+	log.Println("Coordinator listening on port 8000")
 	http.Serve(lis, nil)
 }
