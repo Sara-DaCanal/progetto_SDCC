@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"strconv"
 )
 
 var reqList = list.New()
@@ -41,7 +42,7 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 	if token {
 		for e := reqList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Req)
-			if min(next, item.Timestamp, (*args).P) {
+			if min(next, item.Timestamp, (*args).P) { //vanno sistemate alcune cose
 				*reply = true
 				token = false
 				reqList.Remove(e)
@@ -56,6 +57,19 @@ func (api *Api) ReturnToken(args *bool, reply *int) error {
 	token = *args
 	if token {
 		fmt.Println("Ho di nuovo il token")
+		for e := reqList.Front(); e != nil; e = e.Next() {
+			item := e.Value.(Req)
+			if min(next, item.Timestamp, item.P) {
+				fmt.Println("sto inviando il token di nuovo")
+				token = false
+				reply := true
+				fmt.Println(item.P)
+				client, _ := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
+				client.Call("API.SendToken", &reply, nil)
+				reqList.Remove(e)
+				break
+			}
+		}
 	}
 	return nil
 }
