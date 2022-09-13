@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
-	"time"
 )
 
-var clock []int
+var my_clock Clock
 var my_token bool
 
 type Slave_api int
@@ -19,16 +18,10 @@ func (api *Slave_api) SendToken(args *bool, reply *int) error {
 	return nil
 }
 
-func criticSection() {
-	log.Println("Critic section entered")
-	time.Sleep(5 * time.Second)
-	my_token = false
-}
-
 func (api *Slave_api) ProgMsg(args *Req, reply *int) error {
-	for i, element := range clock {
+	for i, element := range my_clock.value {
 		if element < (*args).Timestamp[i] {
-			clock[i] = (*args).Timestamp[i]
+			my_clock.value[i] = (*args).Timestamp[i]
 		}
 	}
 	return nil
@@ -44,11 +37,11 @@ func Slave(index int, N int) {
 	}
 	log.Println("Client ", index, " listening on port 800", index)
 	go http.Serve(lis, nil)
-	clock = make([]int, N)
+	my_clock.New(N)
 	var client *rpc.Client
 	for i := 0; i < 5; i++ {
-		clock[index-1]++
-		args := Req{index, clock}
+		my_clock.value[index-1]++
+		args := Req{index, my_clock.value}
 		var reply bool
 		client, err = rpc.DialHTTP("tcp", "127.0.0.1:8000")
 		if err != nil {
@@ -72,12 +65,14 @@ func Slave(index int, N int) {
 		}
 		my_token = reply
 		if my_token {
-			criticSection()
+			CriticSection()
+			my_token = false
 		} else {
 			log.Println("Waiting to enter critic section")
 			for !my_token {
 			}
-			criticSection()
+			CriticSection()
+			my_token = false
 		}
 		log.Println("Leaving critic section")
 		reply = true

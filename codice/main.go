@@ -14,9 +14,11 @@ func main() {
 	m, _ := strconv.Atoi(os.Args[1])
 	index, _ := strconv.Atoi(os.Args[2])
 	N, _ := strconv.Atoi(os.Args[3])
-	if m == 0 {
+	if m == 0 && index == 0 {
 		Master(N)
-	} else {
+	} else if m == 0 {
 		Slave(index, N)
+	} else {
+		Maekawa(index, N)
 	}
 }

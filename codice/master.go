@@ -15,20 +15,11 @@ type Api int
 
 var token bool
 var N int
-var next []int
+var my_time Clock
 
 type Req struct {
 	P         int
 	Timestamp []int
-}
-
-func min(V []int, T []int, index int) bool {
-	for i, element := range V {
-		if index-1 != i && element < T[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func (api *Api) GetRequest(args *Req, reply *bool) error {
@@ -38,18 +29,12 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 	if token {
 		for e := reqList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Req)
-			if min(next, item.Timestamp, item.P) {
+			if my_time.Min(item.Timestamp, item.P) {
 				if item.P == (*args).P {
 					log.Println("Token sent to process ", item.P)
-					next[(*args).P-1] = (*args).Timestamp[(*args).P-1]
+					my_time.value[(*args).P-1] = (*args).Timestamp[(*args).P-1]
 					*reply = true
-				} /*else {
-					fmt.Println("Sono nell'else strano")
-					next[item.P-1] = item.Timestamp[item.P-1]
-					reply1 := true
-					client, _ := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
-					client.Call("API.SendToken", &reply1, nil)
-				}*/
+				}
 				token = false
 				reqList.Remove(e)
 				break
@@ -62,11 +47,11 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 func (api *Api) ReturnToken(args *bool, reply *int) error {
 	token = *args
 	if token {
-		log.Println("Token returned to coordinator")
+		log.Println("Token returned to coordinator") //il coordinatore non sa chi lo sta inviando, forse va risolto
 		for e := reqList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Req)
-			if min(next, item.Timestamp, item.P) {
-				next[item.P-1] = item.Timestamp[item.P-1]
+			if my_time.Min(item.Timestamp, item.P) {
+				my_time.value[item.P-1] = item.Timestamp[item.P-1]
 				token = false
 				reply := true
 				client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.P))
@@ -90,7 +75,7 @@ func Master(n int) {
 	log.Println("Centralized token algorithm coordinator started")
 	token = true
 	N = n
-	next = make([]int, N)
+	my_time.New(n)
 	rpc.RegisterName("API", new(Api))
 	rpc.HandleHTTP()
 	lis, e := net.Listen("tcp", ":8000")
