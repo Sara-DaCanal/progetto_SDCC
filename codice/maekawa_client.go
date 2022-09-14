@@ -10,14 +10,6 @@ import (
 	"time"
 )
 
-type State int
-
-const (
-	RELEASED = iota
-	WANTED
-	HELD
-)
-
 var state State
 var voted bool
 var my_quorum Quorum
@@ -110,6 +102,7 @@ func Maekawa(index int, N int) {
 		state = HELD
 		CriticSection()
 		state = RELEASED
+		my_quorum.enter = 0
 		for j := 1; j < my_quorum.len; j++ {
 			client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa((index+j)%N))
 			if err != nil {

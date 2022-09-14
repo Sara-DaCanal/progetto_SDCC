@@ -48,6 +48,14 @@ func (q *Quorum) Init(index int, n int) {
 	}*/
 }
 
+type State int
+
+const (
+	RELEASED = iota
+	WANTED
+	HELD
+)
+
 func CriticSection() {
 	log.Println("Critic section entered")
 	rand.Seed(time.Now().UnixNano())

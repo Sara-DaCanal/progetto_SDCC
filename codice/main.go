@@ -18,7 +18,9 @@ func main() {
 		Master(N)
 	} else if m == 0 {
 		Slave(index, N)
-	} else {
+	} else if m == 1 {
 		Maekawa(index, N)
+	} else {
+		RicartAgrawala(index, N)
 	}
 }
