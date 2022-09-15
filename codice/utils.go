@@ -4,6 +4,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"net/rpc"
 	"time"
 )
 
@@ -56,10 +57,37 @@ const (
 	HELD
 )
 
+type Algorithm int
+
+const (
+	AUTH = iota
+	TOKEN
+	QUORUM
+)
+
 func CriticSection() {
 	log.Println("Critic section entered")
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(100)
 	time.Sleep((time.Duration)(n/10) * time.Second)
+	log.Println("Exiting critic section")
+
+}
+
+func IWantToRegister(id int) {
+	log.Println("I'll trying to access shared resources")
+	client, err := rpc.DialHTTP("tcp", "127.0.0.1:8000")
+	if err != nil {
+		log.Fatalln("Registration service cannot be reached with error: ", err)
+	}
+	port := 8000 + id
+	var reply bool
+	err = client.Call("RegistrationApi.CanIJoin", &port, &reply)
+	if err != nil {
+		log.Fatalln("Request to join cannot be send: ", err)
+	}
+	if reply {
+		log.Println("registered")
+	}
 
 }

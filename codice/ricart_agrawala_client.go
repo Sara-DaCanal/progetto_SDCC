@@ -47,6 +47,7 @@ func (api *RA_api) Reply(args *int, reply *int) error {
 func RicartAgrawala(index int, n int) {
 	me = index
 	log.Println("Ricart Agrawala algorithm client ", index, " started")
+	IWantToRegister(index)
 	my_state = RELEASED
 	s_clock = 0
 	rpc.RegisterName("API", new(RA_api))
