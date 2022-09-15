@@ -20,24 +20,26 @@ var me int
 type RA_api int
 
 type Msg struct {
-	id    int
-	clock int
+	Id    int
+	Clock int
 }
 
 func (api *RA_api) Request(args *Msg, reply *bool) error {
-	if state == HELD || (state == WANTED && (last_req < (*args).clock || (last_req == (*&args.clock) && me < (*args).id))) {
+	if my_state == HELD || (my_state == WANTED && (last_req < (*args).Clock || (last_req == (*&args.Clock) && me < (*args).Id))) {
 		reqQueue.PushFront(*args)
+		log.Println("Process ", (*args).Id, "in queue")
 		*reply = false
 	} else {
 		*reply = true
 	}
-	if s_clock < (*args).clock {
-		s_clock = (*args).clock
+	if s_clock < (*args).Clock {
+		s_clock = (*args).Clock
 	}
 	return nil
 }
 
 func (api *RA_api) Reply(args *int, reply *int) error {
+	log.Println("Reply arrived from process ", *args)
 	replies++
 	return nil
 }
@@ -55,7 +57,7 @@ func RicartAgrawala(index int, n int) {
 	}
 	log.Println("Process ", index, " listening on port 800"+strconv.Itoa(index))
 	go http.Serve(lis, nil)
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 	log.Println("ready")
 	for i := 0; i < 5; i++ {
 		log.Println("I want cs")
@@ -65,7 +67,6 @@ func RicartAgrawala(index int, n int) {
 		m := Msg{index, s_clock}
 		var reply bool
 		for j := 0; j < n; j++ {
-			log.Println("Sending requests")
 			if j != index {
 				client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(j))
 				if err != nil {
@@ -77,28 +78,31 @@ func RicartAgrawala(index int, n int) {
 				}
 				log.Println("Request sent to process ", j)
 				if reply {
+					log.Println("Process", j, "auth")
 					replies++
 				}
 			}
 		}
-		for replies < n {
+		for replies < n-1 {
 		}
-		state = HELD
+		my_state = HELD
 		CriticSection()
-		for e := reqQueue.Front(); e != nil; e.Next() {
+		for e := reqQueue.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Msg)
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.id))
+			client, err := rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(item.Id))
 			if err != nil {
-				log.Fatalln("Process ", item.id, " cannot be reached with error: ", err)
+				log.Fatalln("Process ", item.Id, " cannot be reached with error: ", err)
 			}
-			err = client.Call("API.Reply", nil, nil)
+			err = client.Call("API.Reply", &index, nil)
 			if err != nil {
-				log.Fatalln("Reply cannot be sent to process ", item.id, " with error: ", err)
+				log.Fatalln("Reply cannot be sent to process ", item.Id, " with error: ", err)
 			}
-			log.Println("Reply sent to process ", item.id)
+			log.Println("Reply sent to process ", item.Id)
 		}
 		reqQueue = list.New()
-		state = RELEASED
+		my_state = RELEASED
 		replies = 0
+	}
+	for true {
 	}
 }
