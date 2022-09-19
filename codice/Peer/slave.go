@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 
 var my_clock Clock
 var my_token bool
+var Token_logger *log.Logger
+var Token_debug bool
 
 type Slave_api int
 
@@ -27,37 +30,59 @@ func (api *Slave_api) ProgMsg(args *Req, reply *int) error {
 	return nil
 }
 
-func Slave(index int, N int) {
-	log.Println("Centralized token algorithm client ", index)
+func Slave(index int, c Conf, peer []int, logger *log.Logger, debug bool) {
+	Token_logger = logger
+	Token_debug = debug
+	fmt.Println("Starting...")
+	if Token_debug {
+		Token_logger.Println("Centralized token algorithm client", index, "started")
+	}
 	rpc.RegisterName("API", new(Slave_api))
 	rpc.HandleHTTP()
-	lis, err := net.Listen("tcp", ":800"+strconv.Itoa(index))
+	N := len(peer)
+	lis, err := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
 	if err != nil {
+		if Token_debug {
+			Token_logger.Println("Listen failed with error:", err)
+		}
 		log.Fatalln("Listen failed with error:", err)
 	}
-	log.Println("Client ", index, " listening on port 800", index)
+	if Token_debug {
+		Token_logger.Println("Client ", index, " listening on port ", c.PeerPort)
+	}
 	go http.Serve(lis, nil)
 	my_clock.New(N)
 	var client *rpc.Client
 	for i := 0; i < 5; i++ {
-		my_clock.value[index-1]++
-		args := Req{index, my_clock.value}
+		my_clock.value[index]++
+		args := Req{index, my_clock.value, c.PeerIP, c.PeerPort}
 		var reply bool
-		client, err = rpc.DialHTTP("tcp", "127.0.0.1:8000")
+		client, err = rpc.DialHTTP("tcp", c.MasterIP+":"+strconv.Itoa(c.MasterPort))
 		if err != nil {
+			if Token_debug {
+				Token_logger.Println("Coordinator cannot be reached with error: ", err)
+			}
 			log.Fatalln("Coordinator cannot be reached with error: ", err)
 		}
 		err = client.Call("API.GetRequest", &args, &reply)
 		if err != nil {
+			if Token_debug {
+				Token_logger.Println("Token request failed with error: ", err)
+			}
 			log.Fatalln("Token request failed with error: ", err)
 		}
-		log.Println("Token request sent")
+		if Token_debug {
+			Token_logger.Println("Token request sent")
+		}
 		for j := 0; j < N; j++ {
-			if j+1 != index {
-				client, err = rpc.DialHTTP("tcp", "127.0.0.1:800"+strconv.Itoa(j+1))
+			if j != index {
+				client, err = rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(peer[j])) //ip shouldn't be hardcoded
 				if client != nil {
 					err = client.Call("API.ProgMsg", &args, nil)
 					if err != nil {
+						if Token_debug {
+							Token_logger.Println("Program message failed with error: ", err)
+						}
 						log.Fatalln("Program message failed with error: ", err)
 					}
 				}
@@ -65,23 +90,32 @@ func Slave(index int, N int) {
 		}
 		my_token = reply
 		if my_token {
-			CriticSection()
+			CriticSection(Token_logger, Token_debug)
 			my_token = false
 		} else {
-			log.Println("Waiting to enter critic section")
+			if Token_debug {
+				Token_logger.Println("Waiting to enter critic section")
+			}
 			for !my_token {
 			}
-			CriticSection()
+			CriticSection(Token_logger, Token_debug)
 			my_token = false
 		}
-		log.Println("Leaving critic section")
-		reply = true
-		client, err = rpc.DialHTTP("tcp", "127.0.0.1:8000")
+		if Token_debug {
+			Token_logger.Println("Leaving critic section")
+		}
+		client, err = rpc.DialHTTP("tcp", c.MasterIP+":"+strconv.Itoa(c.MasterPort))
 		if err != nil {
+			if Token_debug {
+				Token_logger.Println("Coordinator cannot be reached with error: ", err)
+			}
 			log.Fatalln("Coordinator cannot be reached with error: ", err)
 		}
-		err = client.Call("API.ReturnToken", &reply, nil)
+		err = client.Call("API.ReturnToken", &index, nil)
 		if err != nil {
+			if Token_debug {
+				Token_logger.Println("Token return failed with error: ", err)
+			}
 			log.Fatalln("Token return failed with error: ", err)
 		}
 
