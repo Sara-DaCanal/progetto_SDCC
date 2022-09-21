@@ -75,10 +75,15 @@ type Req struct {
 }
 
 type Registration_reply struct {
-	Peer  []int
+	Peer  []Peer
 	Alg   Algorithm
 	Index int
 	Mask  []int
+}
+
+type Peer struct {
+	IP   string
+	Port int
 }
 
 func adjust(r int) int {
@@ -142,7 +147,7 @@ type Conf struct {
 }
 
 func (c *Conf) readConf(l *log.Logger, v bool) {
-	jsonFile, err := os.Open("../config.json")
+	jsonFile, err := os.Open("./config.json")
 	if err != nil {
 		if v {
 			l.Println("Configuration file cannot be open: ", err)
@@ -170,7 +175,9 @@ func (c *Conf) readConf(l *log.Logger, v bool) {
 		log.Fatalln("Configuration file cannot be decoded: ", err)
 
 	}
-	l.Println("Configuration successfully loaded")
+	if v {
+		l.Println("Configuration successfully loaded")
+	}
 }
 
 func InitLogger(name string) (*log.Logger, error) {

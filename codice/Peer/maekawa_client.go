@@ -15,7 +15,7 @@ var state State
 var voted bool
 var my_quorum Quorum
 var my_index int
-var my_peer []int
+var my_peer []Peer
 var M_logger *log.Logger
 var M_debug bool
 
@@ -60,7 +60,7 @@ func (api *Maekawa_api) Release(args *int, reply *bool) error {
 		my_reqList.Remove(e)
 		item := e.Value.(int)
 		if item != my_index {
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(my_peer[item]))
+			client, err := rpc.DialHTTP("tcp", my_peer[item].IP+":"+strconv.Itoa(my_peer[item].Port))
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Process", item, "cannot be reached with error:", err)
@@ -94,19 +94,19 @@ func (api *Maekawa_api) Release(args *int, reply *bool) error {
 	return nil
 }
 
-func Maekawa(index int, c Conf, peer []int, mask []int, logger *log.Logger, debug bool) {
+func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, debug bool) {
 	fmt.Println("Starting...")
 	M_logger = logger
 	M_debug = debug
 	if M_debug {
-		M_logger.Println("Maekawa algorithm client ", index, " started")
+		M_logger.Println("Maekawa algorithm client", index, "started")
 	}
 	N := len(peer)
 	my_peer = peer
 	my_index = index
 	my_quorum.Init(index, N, peer, mask)
 	if M_debug {
-		M_logger.Println("Quorum for process ", index, "is", my_quorum.v)
+		M_logger.Println("Quorum for process", index, "is", my_quorum.v)
 	}
 	state = RELEASED
 	voted = false
@@ -120,7 +120,7 @@ func Maekawa(index int, c Conf, peer []int, mask []int, logger *log.Logger, debu
 		log.Fatalln("Listen failed with error:", e)
 	}
 	if M_debug {
-		M_logger.Println("Process ", index, " listening on port ", c.PeerPort)
+		M_logger.Println("Process", index, "listening on ip", c.PeerIP, "and port ", c.PeerPort)
 	}
 	go http.Serve(lis, nil)
 	time.Sleep(time.Duration(index) * time.Millisecond)
@@ -132,7 +132,7 @@ func Maekawa(index int, c Conf, peer []int, mask []int, logger *log.Logger, debu
 		state = WANTED
 		for j := 1; j < my_quorum.len; j++ {
 			process := findIndex(peer, my_quorum.v[j])
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(my_quorum.v[j])) //ip shouldn't be hardcoded
+			client, err := rpc.DialHTTP("tcp", my_quorum.v[j].IP+":"+strconv.Itoa(my_quorum.v[j].Port))
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Process ", process, " cannot be reached with error: ", err)
@@ -170,7 +170,7 @@ func Maekawa(index int, c Conf, peer []int, mask []int, logger *log.Logger, debu
 		my_quorum.enter = 0
 		for j := 1; j < my_quorum.len; j++ {
 			process := findIndex(peer, my_quorum.v[j])
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(my_quorum.v[j]))
+			client, err := rpc.DialHTTP("tcp", my_quorum.v[j].IP+":"+strconv.Itoa(my_quorum.v[j].Port))
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Process ", process, " cannot be reached with error: ", err)
@@ -192,7 +192,7 @@ func Maekawa(index int, c Conf, peer []int, mask []int, logger *log.Logger, debu
 			e := my_reqList.Front()
 			my_reqList.Remove(e)
 			item := e.Value.(int)
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(peer[item]))
+			client, err := rpc.DialHTTP("tcp", peer[item].IP+":"+strconv.Itoa(peer[item].Port))
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Process ", item, " cannot be reached with error: ", err)

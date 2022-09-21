@@ -17,7 +17,7 @@ var replies int
 var reqQueue = list.New()
 var last_req int
 var me int
-var RA_peer []int
+var RA_peer []Peer
 var RA_logger *log.Logger
 var RA_debug bool
 
@@ -26,6 +26,7 @@ type RA_api int
 type Msg struct {
 	Id    int
 	Clock int
+	IP    string
 	Port  int
 }
 
@@ -53,7 +54,7 @@ func (api *RA_api) Reply(args *int, reply *int) error {
 	return nil
 }
 
-func RicartAgrawala(index int, c Conf, peer []int, logger *log.Logger, debug bool) {
+func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 	me = index
 	RA_peer = peer
 	RA_logger = logger
@@ -86,12 +87,12 @@ func RicartAgrawala(index int, c Conf, peer []int, logger *log.Logger, debug boo
 		my_state = WANTED
 		s_clock++
 		last_req = s_clock
-		m := Msg{index, s_clock, c.PeerPort} //change to include ip too
+		m := Msg{index, s_clock, c.PeerIP, c.PeerPort}
 		var reply bool
 		for j := 0; j < n; j++ {
-			peer_port := RA_peer[j]
-			if peer_port != c.PeerPort {
-				client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(peer_port)) //ip shouldn't be hardcoded
+			peer_addr := RA_peer[j]
+			if peer_addr.Port != c.PeerPort || peer_addr.IP != c.PeerIP {
+				client, err := rpc.DialHTTP("tcp", peer_addr.IP+":"+strconv.Itoa(peer_addr.Port))
 				if err != nil {
 					if RA_debug {
 						RA_logger.Println("Process ", j, " cannot be reached with error: ", err)
@@ -122,22 +123,22 @@ func RicartAgrawala(index int, c Conf, peer []int, logger *log.Logger, debug boo
 		CriticSection(RA_logger, RA_debug)
 		for e := reqQueue.Front(); e != nil; e = e.Next() {
 			item := e.Value.(Msg)
-			client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(item.Port)) //ip shouldn't be hardcoded
+			client, err := rpc.DialHTTP("tcp", item.IP+":"+strconv.Itoa(item.Port))
 			if err != nil {
 				if RA_debug {
-					RA_logger.Println("Process ", item.Id, " cannot be reached with error: ", err)
+					RA_logger.Println("Process", item.Id, "cannot be reached with error:", err)
 				}
-				log.Fatalln("Process ", item.Id, " cannot be reached with error: ", err)
+				log.Fatalln("Process", item.Id, "cannot be reached with error:", err)
 			}
 			err = client.Call("API.Reply", &index, nil)
 			if err != nil {
 				if RA_debug {
-					RA_logger.Println("Reply cannot be sent to process ", item.Id, " with error: ", err)
+					RA_logger.Println("Reply cannot be sent to process", item.Id, "with error:", err)
 				}
-				log.Fatalln("Reply cannot be sent to process ", item.Id, " with error: ", err)
+				log.Fatalln("Reply cannot be sent to process", item.Id, "with error:", err)
 			}
 			if RA_debug {
-				RA_logger.Println("Reply sent to process ", item.Id)
+				RA_logger.Println("Reply sent to processs", item.Id)
 			}
 		}
 		reqQueue = list.New()

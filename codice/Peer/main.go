@@ -17,16 +17,25 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(1000)
 	fmt.Println("Peer client is up")
-	if len(os.Args) > 1 {
-		if os.Args[1] == "-v" || os.Args[1] == "-verbose" {
+	ip := "127.0.0.1"
+	peer_debug = false
+	peer_logger = log.Default()
+	for i := 1; i < len(os.Args); i++ {
+		if os.Args[i] == "-v" || os.Args[i] == "--verbose" {
 			peer_debug = true
 			fmt.Println("Debug mode is enabled, program log can be found in /log/Peer" + strconv.Itoa(n) + ".log")
+		} else if os.Args[i] == "-r" || os.Args[i] == "--remote" {
+			var err error
+			ip, err = getPublicIP()
+			if err != nil {
+				log.Fatalln("Impossible to obtain ip address:", err)
+			}
+		} else if os.Args[i] == "-l" || os.Args[i] == "--local" {
+			ip = GetOutboundIP()
 		} else {
 			fmt.Println("Unknown flag ", os.Args[1])
 			return
 		}
-	} else {
-		peer_debug = false
 	}
 	if peer_debug {
 		var err error
@@ -40,11 +49,12 @@ func main() {
 
 	port := c.PeerPort + n
 	c.PeerPort = port
+	c.PeerIP = ip
 
 	if peer_debug {
 		peer_logger.Println("I'll trying to access shared resources")
 	}
-	client, err := rpc.DialHTTP("tcp", c.RegIP+":"+strconv.Itoa(c.RegPort))
+	client, err := rpc.DialHTTP("tcp", "reg:"+strconv.Itoa(c.RegPort))
 	if err != nil {
 		if peer_debug {
 			peer_logger.Println("Registration service cannot be reached with error: ", err)
@@ -52,7 +62,8 @@ func main() {
 		log.Fatalln("Registration service cannot be reached with error: ", err)
 	}
 	var reply Registration_reply
-	err = client.Call("RegistrationApi.CanIJoin", &port, &reply) //ip should be sent too
+	myAddress := &Peer{c.PeerIP, c.PeerPort}
+	err = client.Call("RegistrationApi.CanIJoin", &myAddress, &reply)
 	if err != nil {
 		if peer_debug {
 			peer_logger.Println("Request to join cannot be send: ", err)
@@ -66,7 +77,7 @@ func main() {
 		log.Fatalln("To many peers, try again later")
 	} else {
 		peer_logger.Println("Registered!")
-		peer := make([]int, len(reply.Peer))
+		peer := make([]Peer, len(reply.Peer))
 		for i, element := range reply.Peer {
 			peer[i] = element
 		}

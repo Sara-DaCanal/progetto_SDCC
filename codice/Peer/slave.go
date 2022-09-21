@@ -30,7 +30,7 @@ func (api *Slave_api) ProgMsg(args *Req, reply *int) error {
 	return nil
 }
 
-func Slave(index int, c Conf, peer []int, logger *log.Logger, debug bool) {
+func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 	Token_logger = logger
 	Token_debug = debug
 	fmt.Println("Starting...")
@@ -76,7 +76,7 @@ func Slave(index int, c Conf, peer []int, logger *log.Logger, debug bool) {
 		}
 		for j := 0; j < N; j++ {
 			if j != index {
-				client, err = rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(peer[j])) //ip shouldn't be hardcoded
+				client, err = rpc.DialHTTP("tcp", peer[j].IP+":"+strconv.Itoa(peer[j].Port))
 				if client != nil {
 					err = client.Call("API.ProgMsg", &args, nil)
 					if err != nil {

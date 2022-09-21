@@ -18,7 +18,7 @@ import (
 
 type Reg_api int
 
-var processList []int
+var processList []Peer
 var processNumber int
 var current int
 var exAlgo Algorithm
@@ -30,33 +30,34 @@ func getParam() {
 		reg_logger.Println("Starting new registration group")
 	}
 	fmt.Print("Insert the number for next group (should be at least 2): ")
-	fmt.Scanf("%d", &processNumber)
+	//fmt.Scanf("%d", &processNumber)
+	processNumber, _ = strconv.Atoi(os.Getenv("N"))
 	for processNumber < 2 {
 		fmt.Print("Not enough processes, try again: ")
 		fmt.Scanf("%d", &processNumber)
 	}
-	processList = make([]int, processNumber)
+	processList = make([]Peer, processNumber)
 	current = 0
 	fmt.Println("Insert which algorithm do you wish to use: ")
 	fmt.Println("0 - Ricart Agrawala's algorithm")
 	fmt.Println("1 - Centralized token algorithm")
 	fmt.Println("2 - Maekawa's algorithm")
-	var app int
-	fmt.Scanf("%d", &app)
+	app, _ := strconv.Atoi(os.Getenv("ALG"))
+	/*fmt.Scanf("%d", &app)
 	for app > 2 {
 		fmt.Print("Invalid algorithm, try again: ")
 		fmt.Scanf("%d", &app)
-	}
+	}*/
 	exAlgo = Algorithm(app)
 }
 
-func sendReply(args int, reply *Registration_reply) {
+func sendReply(args Peer, reply *Registration_reply) {
 	processList[current] = args
 	(*reply).Alg = exAlgo
 	(*reply).Index = current
 	current++
 }
-func (r *Reg_api) CanIJoin(args *int, reply *Registration_reply) error {
+func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 	if reg_debug {
 		reg_logger.Println("Someone is trying to register")
 	}
@@ -108,16 +109,18 @@ func (r *Reg_api) CanIJoin(args *int, reply *Registration_reply) error {
 
 func main() {
 	fmt.Println("Registration service is up")
-	if len(os.Args) > 1 {
-		if os.Args[1] == "-v" || os.Args[1] == "-verbose" {
-			reg_debug = true
-			fmt.Println("Debug mode is enabled, program log can be found in /log/Registration.log")
-		} else {
-			fmt.Println("Unknown flag ", os.Args[1])
-			return
-		}
+	//if len(os.Args) > 1 {
+	if os.Getenv("VERBOSE") == "1" {
+		//if os.Args[1] == "-v" || os.Args[1] == "--verbose" {
+		reg_debug = true
+		fmt.Println("Debug mode is enabled, program log can be found in /log/Registration.log")
+		//} else {
+		//fmt.Println("Unknown flag ", os.Args[1])
+		//	return
+		//}
 	} else {
 		reg_debug = false
+		reg_logger = log.Default()
 	}
 	if reg_debug {
 		var err error
@@ -133,7 +136,7 @@ func main() {
 
 	fmt.Println("Registration is starting...")
 	current = 0
-	processList = make([]int, processNumber)
+	processList = make([]Peer, processNumber)
 	sigs := make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 
