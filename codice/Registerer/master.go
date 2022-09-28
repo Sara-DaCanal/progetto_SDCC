@@ -35,6 +35,25 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 					}
 					my_time.value[(*args).P] = (*args).Timestamp[(*args).P]
 					*reply = true
+				} else {
+					reply := true
+					client, err := rpc.DialHTTP("tcp", item.IP+":"+strconv.Itoa(item.Port))
+					if err != nil {
+						if master_debug {
+							master_logger.Println("Process ", item.P, " cannot be reached with error: ", err)
+						}
+						log.Fatalln("Process ", item.P, " cannot be reached with error: ", err)
+					}
+					err = client.Call("API.SendToken", &reply, nil)
+					if err != nil {
+						if master_debug {
+							master_logger.Println("Token cannot be sent to process ", item.P, " with error: ", err)
+						}
+						log.Fatalln("Token cannot be sent to process ", item.P, " with error: ", err)
+					}
+					if master_debug {
+						master_logger.Println("Token sent to process ", item.P)
+					}
 				}
 				token = false
 				reqList.Remove(e)

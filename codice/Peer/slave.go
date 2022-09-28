@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
+	"strings"
 )
 
 var my_clock Clock
@@ -58,7 +59,10 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 		args := Req{index, my_clock.value, c.PeerIP, c.PeerPort}
 		var reply bool
 		client, err = rpc.DialHTTP("tcp", c.MasterIP+":"+strconv.Itoa(c.MasterPort))
-		if err != nil {
+		for err != nil && strings.Contains(err.Error(), "connection refused") {
+			client, err = rpc.DialHTTP("tcp", c.MasterIP+":"+strconv.Itoa(c.MasterPort))
+		}
+		if err != nil && !strings.Contains(err.Error(), "connection refused") {
 			if Token_debug {
 				Token_logger.Println("Coordinator cannot be reached with error: ", err)
 			}

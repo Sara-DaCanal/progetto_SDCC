@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net"
 	"os"
 )
 
@@ -17,6 +18,9 @@ type Clock struct {
 func (c *Clock) New(n int) {
 	(*c).len = n
 	(*c).value = make([]int, n)
+	for i := range (*c).value {
+		(*c).value[i] = 0
+	}
 }
 func (c Clock) Min(T []int, index int) bool {
 	for i, element := range c.value {
@@ -191,4 +195,16 @@ func InitLogger(name string) (*log.Logger, error) {
 	}
 	my_log := log.New(logFile, "", log.LstdFlags)
 	return my_log, nil
+}
+
+func GetOutboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+
 }

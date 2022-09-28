@@ -3,7 +3,7 @@
     "master_port":9000,
     "peer_port":10000,
 
-    "reg_ip":"127.0.0.1",
-    "master_ip":"127.0.0.1",
-    "peer_ip":"127.0.0.1"
+    "reg_ip":"reg",
+    "master_ip":"reg",
+    "peer_ip":""
 }

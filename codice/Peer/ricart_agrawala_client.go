@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
-	"time"
 )
 
 var s_clock int
@@ -79,7 +78,7 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 		RA_logger.Println("Process ", index, " listening on port ", c.PeerPort)
 	}
 	go http.Serve(lis, nil)
-	time.Sleep(time.Millisecond) //forse aumentare su sistema vero
+	//time.Sleep(time.Millisecond) //forse aumentare su sistema vero
 	for i := 0; i < 5; i++ {
 		if RA_debug {
 			RA_logger.Println("Trying to enter critic section")

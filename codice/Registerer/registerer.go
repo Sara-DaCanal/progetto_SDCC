@@ -29,26 +29,24 @@ func getParam() {
 	if reg_debug {
 		reg_logger.Println("Starting new registration group")
 	}
-	fmt.Print("Insert the number for next group (should be at least 2): ")
-	//fmt.Scanf("%d", &processNumber)
 	processNumber, _ = strconv.Atoi(os.Getenv("N"))
-	for processNumber < 2 {
-		fmt.Print("Not enough processes, try again: ")
-		fmt.Scanf("%d", &processNumber)
-	}
 	processList = make([]Peer, processNumber)
 	current = 0
-	fmt.Println("Insert which algorithm do you wish to use: ")
-	fmt.Println("0 - Ricart Agrawala's algorithm")
-	fmt.Println("1 - Centralized token algorithm")
-	fmt.Println("2 - Maekawa's algorithm")
-	app, _ := strconv.Atoi(os.Getenv("ALG"))
-	/*fmt.Scanf("%d", &app)
-	for app > 2 {
-		fmt.Print("Invalid algorithm, try again: ")
-		fmt.Scanf("%d", &app)
-	}*/
-	exAlgo = Algorithm(app)
+	app := os.Getenv("ALG")
+	switch app {
+	case "AUTH":
+		exAlgo = AUTH
+		break
+	case "TOKEN":
+		exAlgo = TOKEN
+		break
+	case "QUORUM":
+		exAlgo = QUORUM
+		break
+	}
+	if reg_debug {
+		reg_logger.Println("Registration starting with", processNumber, "processes using algorithm:", exAlgo)
+	}
 }
 
 func sendReply(args Peer, reply *Registration_reply) {
@@ -78,8 +76,6 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 			(*reply).Mask = nil
 		}
 	} else {
-		sendReply(*args, reply)
-		(*reply).Peer = processList
 
 		if exAlgo == QUORUM {
 			(*reply).Mask = Qgen(processNumber)
@@ -95,29 +91,18 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 			}
 			go Master(processNumber, reg_debug)
 		}
+		sendReply(*args, reply)
+		(*reply).Peer = processList
 
-		go func() {
-			getParam()
-			if reg_debug {
-				reg_logger.Println("Registration starting again with ", processNumber, "processes")
-			}
-			fmt.Println("Registration is starting...")
-		}()
 	}
 	return nil
 }
 
 func main() {
 	fmt.Println("Registration service is up")
-	//if len(os.Args) > 1 {
 	if os.Getenv("VERBOSE") == "1" {
-		//if os.Args[1] == "-v" || os.Args[1] == "--verbose" {
 		reg_debug = true
 		fmt.Println("Debug mode is enabled, program log can be found in /log/Registration.log")
-		//} else {
-		//fmt.Println("Unknown flag ", os.Args[1])
-		//	return
-		//}
 	} else {
 		reg_debug = false
 		reg_logger = log.Default()
