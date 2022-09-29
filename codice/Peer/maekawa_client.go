@@ -4,11 +4,8 @@ import (
 	"container/list"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"net/rpc"
 	"strconv"
-	"time"
 )
 
 var state State
@@ -19,11 +16,9 @@ var my_peer []Peer
 var M_logger *log.Logger
 var M_debug bool
 
-type Maekawa_api int
-
 var my_reqList = list.New()
 
-func (api *Maekawa_api) Request(args *int, reply *bool) error {
+func (api *Peer_Api) Request_m(args *int, reply *bool) error {
 	if M_debug {
 		M_logger.Println("Request arrived from process", *args)
 	}
@@ -40,18 +35,20 @@ func (api *Maekawa_api) Request(args *int, reply *bool) error {
 		*reply = true
 		voted = true
 	}
+	msg_delay()
 	return nil
 }
 
-func (api *Maekawa_api) Reply(args *int, reply *int) error {
+func (api *Peer_Api) Reply_m(args *int, reply *int) error {
 	if M_debug {
 		M_logger.Println("vote arrived from process", *args)
 	}
 	my_quorum.enter++
+	msg_delay()
 	return nil
 }
 
-func (api *Maekawa_api) Release(args *int, reply *bool) error {
+func (api *Peer_Api) Release(args *int, reply *bool) error {
 	if M_debug {
 		M_logger.Println("Process", *args, "released CS")
 	}
@@ -67,7 +64,8 @@ func (api *Maekawa_api) Release(args *int, reply *bool) error {
 				}
 				log.Fatalln("Process", item, "cannot be reached with error:", err)
 			}
-			err = client.Call("API.Reply", &my_index, nil)
+			msg_delay()
+			err = client.Call("API.Reply_m", &my_index, nil)
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Reply cannot be sent to process", item, "with error:", err)
@@ -91,6 +89,7 @@ func (api *Maekawa_api) Release(args *int, reply *bool) error {
 		}
 		voted = false
 	}
+	msg_delay()
 	return nil
 }
 
@@ -110,20 +109,6 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 	}
 	state = RELEASED
 	voted = false
-	rpc.RegisterName("API", new(Maekawa_api))
-	rpc.HandleHTTP()
-	lis, e := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
-	if e != nil {
-		if M_debug {
-			M_logger.Println("Listen failed with error:", e)
-		}
-		log.Fatalln("Listen failed with error:", e)
-	}
-	if M_debug {
-		M_logger.Println("Process", index, "listening on ip", c.PeerIP, "and port ", c.PeerPort)
-	}
-	go http.Serve(lis, nil)
-	time.Sleep(time.Duration(index) * time.Millisecond)
 	for i := 0; i < 5; i++ {
 		if M_debug {
 			M_logger.Println("Asking to enter critic section")
@@ -139,7 +124,8 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 				}
 				log.Fatalln("Process ", process, " cannot be reached with error: ", err)
 			}
-			err = client.Call("API.Request", &index, &reply)
+			msg_delay()
+			err = client.Call("API.Request_m", &index, &reply)
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Request cannot be sent to process ", process, " with error: ", err)
@@ -177,6 +163,7 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 				}
 				log.Fatalln("Process ", process, " cannot be reached with error: ", err)
 			}
+			msg_delay()
 			err = client.Call("API.Release", &index, &reply)
 			if err != nil {
 				if M_debug {
@@ -199,7 +186,8 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 				}
 				log.Fatalln("Process ", item, " cannot be reached with error: ", err)
 			}
-			err = client.Call("API.Reply", &my_index, nil)
+			msg_delay()
+			err = client.Call("API.Reply_m", &my_index, nil)
 			if err != nil {
 				if M_debug {
 					M_logger.Println("Reply cannot be sent to process ", item, " with error: ", err)

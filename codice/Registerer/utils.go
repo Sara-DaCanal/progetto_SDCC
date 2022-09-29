@@ -6,8 +6,10 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"os"
+	"time"
 )
 
 type Clock struct {
@@ -207,4 +209,9 @@ func GetOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP.String()
 
+}
+
+func msg_delay() {
+	d := rand.Intn(2000)
+	time.Sleep(time.Duration(d) * time.Millisecond)
 }

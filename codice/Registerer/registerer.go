@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -34,13 +35,13 @@ func getParam() {
 	current = 0
 	app := os.Getenv("ALG")
 	switch app {
-	case "AUTH":
+	case "auth":
 		exAlgo = AUTH
 		break
-	case "TOKEN":
+	case "token":
 		exAlgo = TOKEN
 		break
-	case "QUORUM":
+	case "quorum":
 		exAlgo = QUORUM
 		break
 	}
@@ -58,6 +59,12 @@ func sendReply(args Peer, reply *Registration_reply) {
 func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 	if reg_debug {
 		reg_logger.Println("Someone is trying to register")
+	}
+	if exAlgo == TOKEN && current == 0 {
+		if reg_debug {
+			reg_logger.Println("Master process for centralized token algorithm started")
+		}
+		go Master(processNumber, reg_debug)
 	}
 	if current >= processNumber {
 		(*reply).Alg = NULL
@@ -85,14 +92,10 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 		if reg_debug {
 			reg_logger.Println("Mutual exclusion group completed")
 		}
-		if exAlgo == TOKEN {
-			if reg_debug {
-				reg_logger.Println("Master process for centralized token algorithm started")
-			}
-			go Master(processNumber, reg_debug)
-		}
+
 		sendReply(*args, reply)
 		(*reply).Peer = processList
+		msg_delay()
 
 	}
 	return nil
@@ -100,6 +103,7 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 
 func main() {
 	fmt.Println("Registration service is up")
+	rand.Seed(123456789)
 	if os.Getenv("VERBOSE") == "1" {
 		reg_debug = true
 		fmt.Println("Debug mode is enabled, program log can be found in /log/Registration.log")

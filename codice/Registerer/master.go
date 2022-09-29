@@ -44,6 +44,7 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 						}
 						log.Fatalln("Process ", item.P, " cannot be reached with error: ", err)
 					}
+					msg_delay()
 					err = client.Call("API.SendToken", &reply, nil)
 					if err != nil {
 						if master_debug {
@@ -61,6 +62,7 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 			}
 		}
 	}
+	msg_delay()
 	return nil
 }
 
@@ -82,6 +84,7 @@ func (api *Api) ReturnToken(args *int, reply *int) error {
 				}
 				log.Fatalln("Process ", item.P, " cannot be reached with error: ", err)
 			}
+			msg_delay()
 			err = client.Call("API.SendToken", &reply, nil)
 			if err != nil {
 				if master_debug {
@@ -96,11 +99,13 @@ func (api *Api) ReturnToken(args *int, reply *int) error {
 			break
 		}
 	}
+	msg_delay()
 	return nil
 }
 
 func Master(n int, debug bool) {
 	master_debug = debug
+	master_logger = log.Default()
 	if master_debug {
 		var err error
 		master_logger, err = InitLogger("Coordinator")

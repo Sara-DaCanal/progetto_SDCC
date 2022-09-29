@@ -14,8 +14,6 @@ services:
       - ./logs:/logs
 
   peer_s:
-    deploy:
-      replicas: 3
     build:
       context: ./Peer
       dockerfile: Dockerfile

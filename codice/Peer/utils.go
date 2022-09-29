@@ -200,3 +200,8 @@ func getPublicIP() (string, error) {
 	}
 	return string(body), nil
 }
+
+func msg_delay() {
+	d := rand.Intn(2000)
+	time.Sleep(time.Duration(d) * time.Millisecond)
+}

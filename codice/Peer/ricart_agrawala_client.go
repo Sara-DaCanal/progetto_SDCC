@@ -4,8 +4,6 @@ import (
 	"container/list"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"net/rpc"
 	"strconv"
 )
@@ -20,8 +18,6 @@ var RA_peer []Peer
 var RA_logger *log.Logger
 var RA_debug bool
 
-type RA_api int
-
 type Msg struct {
 	Id    int
 	Clock int
@@ -29,7 +25,7 @@ type Msg struct {
 	Port  int
 }
 
-func (api *RA_api) Request(args *Msg, reply *bool) error {
+func (api *Peer_Api) Request(args *Msg, reply *bool) error {
 	if my_state == HELD || (my_state == WANTED && (last_req < (*args).Clock || (last_req == (*&args.Clock) && me < (*args).Id))) {
 		reqQueue.PushFront(*args)
 		if RA_debug {
@@ -42,14 +38,16 @@ func (api *RA_api) Request(args *Msg, reply *bool) error {
 	if s_clock < (*args).Clock {
 		s_clock = (*args).Clock
 	}
+	msg_delay()
 	return nil
 }
 
-func (api *RA_api) Reply(args *int, reply *int) error {
+func (api *Peer_Api) Reply(args *int, reply *int) error {
 	if RA_debug {
 		RA_logger.Println("Reply arrived from process ", *args)
 	}
 	replies++
+	msg_delay()
 	return nil
 }
 
@@ -65,20 +63,6 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 	}
 	my_state = RELEASED
 	s_clock = 0
-	rpc.RegisterName("API", new(RA_api))
-	rpc.HandleHTTP()
-	lis, e := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
-	if e != nil {
-		if RA_debug {
-			RA_logger.Println("Listen failed with error:", e)
-		}
-		log.Fatalln("Listen failed with error:", e)
-	}
-	if RA_debug {
-		RA_logger.Println("Process ", index, " listening on port ", c.PeerPort)
-	}
-	go http.Serve(lis, nil)
-	//time.Sleep(time.Millisecond) //forse aumentare su sistema vero
 	for i := 0; i < 5; i++ {
 		if RA_debug {
 			RA_logger.Println("Trying to enter critic section")
@@ -98,6 +82,7 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 					}
 					log.Fatalln("Process ", j, " cannot be reached with error: ", err)
 				}
+				msg_delay()
 				err = client.Call("API.Request", &m, &reply)
 				if err != nil {
 					if RA_debug {
@@ -129,6 +114,7 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 				}
 				log.Fatalln("Process", item.Id, "cannot be reached with error:", err)
 			}
+			msg_delay()
 			err = client.Call("API.Reply", &index, nil)
 			if err != nil {
 				if RA_debug {

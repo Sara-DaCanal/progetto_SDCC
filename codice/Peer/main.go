@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
+	"net/http"
 	"net/rpc"
 	"os"
 	"strconv"
@@ -11,12 +13,15 @@ import (
 	"time"
 )
 
+type Peer_Api int
+
 func main() {
 	var peer_debug bool
 	var peer_logger *log.Logger
 	var c Conf
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(1000)
+	rand.Seed(987654321)
 	fmt.Println("Peer client is up")
 	peer_debug = false
 	peer_logger = log.Default()
@@ -39,9 +44,24 @@ func main() {
 	c.PeerPort = port
 	c.PeerIP = GetOutboundIP()
 
+	rpc.RegisterName("API", new(Peer_Api))
+	rpc.HandleHTTP()
+	lis, e := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
+	if e != nil {
+		if peer_debug {
+			peer_logger.Println("Listen failed with error:", e)
+		}
+		log.Fatalln("Listen failed with error:", e)
+	}
+	if peer_debug {
+		peer_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
+	}
+	go http.Serve(lis, nil)
+
 	if peer_debug {
 		peer_logger.Println("I'll trying to access shared resources")
 	}
+
 	client, err := rpc.DialHTTP("tcp", c.RegIP+":"+strconv.Itoa(c.RegPort))
 	for err != nil && strings.Contains(err.Error(), "connection refused") {
 		client, err = rpc.DialHTTP("tcp", c.RegIP+":"+strconv.Itoa(c.RegPort))
@@ -54,6 +74,7 @@ func main() {
 	}
 	var reply Registration_reply
 	myAddress := &Peer{c.PeerIP, c.PeerPort}
+	msg_delay()
 	err = client.Call("RegistrationApi.CanIJoin", &myAddress, &reply)
 	if err != nil {
 		if peer_debug {
