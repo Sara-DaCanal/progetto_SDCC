@@ -55,7 +55,7 @@ else
     echo -e "\t[*] Number of peers...........: ${SIZE}"
 fi
  
-if [ "$VERBOSE" == "true" ]; then
+if [ "$VERBOSE" == "1" ]; then
     echo -e "\t[*] Verbose output on log.....: ENABLED"
 else 
     echo -e "\t[*] Verbose output on log.....: DISABLED"

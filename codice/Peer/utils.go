@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,6 +41,7 @@ type Quorum struct {
 	v     []Peer
 	len   int
 	enter int
+	reply int
 }
 
 func (q *Quorum) Init(index int, n int, peer []Peer, mask []int) {
@@ -51,6 +53,7 @@ func (q *Quorum) Init(index int, n int, peer []Peer, mask []int) {
 	}
 	(*q).len = k
 	(*q).enter = 0
+	(*q).reply = 0
 	(*q).v = make([]Peer, k)
 	j := 0
 	for i := 0; i < len(mask); i++ {
@@ -89,6 +92,7 @@ func CriticSection(l *log.Logger, v bool) {
 	if v {
 		l.Println("Exiting critic section")
 	}
+	fmt.Println("Exiting critic section")
 
 }
 
@@ -97,6 +101,26 @@ type Req struct {
 	Timestamp []int
 	IP        string
 	Port      int
+}
+
+type Maekawa_req struct {
+	P          int
+	Sequence_n int
+}
+
+func (r Maekawa_req) isSmallest(l *list.List, locking Maekawa_req) bool {
+	if locking.Sequence_n < r.Sequence_n || (locking.Sequence_n == r.Sequence_n && locking.P < r.Sequence_n) {
+		return false
+	}
+	for e := l.Front(); e != nil; e = e.Next() {
+		real_item := e.Value.(Maekawa_req)
+		if real_item.P != r.P {
+			if real_item.Sequence_n < r.Sequence_n || (real_item.Sequence_n == r.Sequence_n && real_item.P < r.Sequence_n) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 type Peer struct {
@@ -161,6 +185,20 @@ func findIndex(list []Peer, elem Peer) int {
 		}
 	}
 	return -1
+}
+
+func nextRequest(l list.List) *list.Element {
+	min := Maekawa_req{10000, 10000}
+	var min_elem *list.Element
+	for e := l.Front(); e != nil; e = e.Next() {
+		item := e.Value.(Maekawa_req)
+		if item.Sequence_n < min.Sequence_n || (item.Sequence_n == min.Sequence_n && item.P < min.P) {
+			min.P = item.P
+			min.Sequence_n = item.Sequence_n
+			min_elem = e
+		}
+	}
+	return min_elem
 }
 
 func InitLogger(name string) (*log.Logger, error) {

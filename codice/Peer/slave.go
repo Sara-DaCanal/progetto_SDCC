@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"net/rpc"
 	"strconv"
 )
@@ -37,6 +39,19 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 		Token_logger.Println("Centralized token algorithm client", index, "started")
 	}
 	my_clock.New(N)
+	rpc.RegisterName("API", new(Peer_Api))
+	rpc.HandleHTTP()
+	lis, e := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
+	if e != nil {
+		if Token_debug {
+			Token_logger.Println("Listen failed with error:", e)
+		}
+		log.Fatalln("Listen failed with error:", e)
+	}
+	if Token_debug {
+		Token_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
+	}
+	go http.Serve(lis, nil)
 	for i := 0; i < 5; i++ {
 		my_clock.value[index]++
 		args := Req{index, my_clock.value, c.PeerIP, c.PeerPort}

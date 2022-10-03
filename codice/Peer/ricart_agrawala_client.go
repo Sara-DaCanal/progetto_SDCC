@@ -4,8 +4,11 @@ import (
 	"container/list"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"net/rpc"
 	"strconv"
+	"strings"
 )
 
 var s_clock int
@@ -63,6 +66,19 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 	}
 	my_state = RELEASED
 	s_clock = 0
+	rpc.RegisterName("API", new(Peer_Api))
+	rpc.HandleHTTP()
+	lis, e := net.Listen("tcp", ":"+strconv.Itoa(c.PeerPort))
+	if e != nil {
+		if RA_debug {
+			RA_logger.Println("Listen failed with error:", e)
+		}
+		log.Fatalln("Listen failed with error:", e)
+	}
+	if RA_debug {
+		RA_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
+	}
+	go http.Serve(lis, nil)
 	for i := 0; i < 5; i++ {
 		if RA_debug {
 			RA_logger.Println("Trying to enter critic section")
@@ -76,7 +92,10 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 			peer_addr := RA_peer[j]
 			if peer_addr.Port != c.PeerPort || peer_addr.IP != c.PeerIP {
 				client, err := rpc.DialHTTP("tcp", peer_addr.IP+":"+strconv.Itoa(peer_addr.Port))
-				if err != nil {
+				for err != nil && strings.Contains(err.Error(), "connection refused") {
+					client, err = rpc.DialHTTP("tcp", peer_addr.IP+":"+strconv.Itoa(peer_addr.Port))
+				}
+				if err != nil && !strings.Contains(err.Error(), "connection refused") {
 					if RA_debug {
 						RA_logger.Println("Process ", j, " cannot be reached with error: ", err)
 					}
