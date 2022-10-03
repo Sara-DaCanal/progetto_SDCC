@@ -2,14 +2,20 @@ package main
 
 import (
 	"container/list"
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var state State
@@ -342,9 +348,26 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 	if M_debug {
 		M_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
 	}
-	go http.Serve(lis, nil)
+	sigs := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	for i := 0; i < 5; i++ {
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		if M_debug {
+			M_logger.Println("Shutdown signal caught, peer service will stop")
+		}
+		cancel()
+		lis.Close()
+		fmt.Println("Peer", index, "shutdown")
+		os.Exit(0)
+	}()
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return http.Serve(lis, nil)
+	})
+
+	for true {
 		if M_debug {
 			M_logger.Println("Asking to enter critic section")
 		}

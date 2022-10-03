@@ -14,6 +14,7 @@ import (
 type Peer_Api int
 
 func main() {
+
 	var peer_debug bool
 	var peer_logger *log.Logger
 	var c Conf
@@ -36,6 +37,7 @@ func main() {
 		}
 		peer_logger.Println("Peer client starting in debug mode")
 	}
+
 	c.readConf(peer_logger, peer_debug)
 
 	port := c.PeerPort + n

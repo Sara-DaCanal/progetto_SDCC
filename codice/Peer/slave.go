@@ -1,12 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var my_clock Clock
@@ -51,8 +57,29 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 	if Token_debug {
 		Token_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
 	}
-	go http.Serve(lis, nil)
-	for i := 0; i < 5; i++ {
+	sigs := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	g, _ := errgroup.WithContext(ctx)
+	go func() {
+		<-sigs
+		if Token_debug {
+			Token_logger.Println("Shutdown signal caught, peer service will stop")
+		}
+
+		cancel()
+		lis.Close()
+		fmt.Println("Peer", index, "shutdown")
+		os.Exit(0)
+
+	}()
+
+	g.Go(func() error {
+		return http.Serve(lis, nil)
+	})
+
+	for true {
 		my_clock.value[index]++
 		args := Req{index, my_clock.value, c.PeerIP, c.PeerPort}
 		var reply bool
@@ -61,7 +88,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 			if Token_debug {
 				Token_logger.Println("Coordinator cannot be reached with error: ", err)
 			}
-			log.Fatalln("Coordinator cannot be reached with error: ", err)
+			sigs <- syscall.SIGINT
 		}
 		msg_delay()
 		err = client.Call("API.GetRequest", &args, &reply)
@@ -69,7 +96,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 			if Token_debug {
 				Token_logger.Println("Token request failed with error: ", err)
 			}
-			log.Fatalln("Token request failed with error: ", err)
+			sigs <- syscall.SIGINT
 		}
 		if Token_debug {
 			Token_logger.Println("Token request sent")
@@ -84,7 +111,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 						if Token_debug {
 							Token_logger.Println("Program message failed with error: ", err)
 						}
-						log.Fatalln("Program message failed with error: ", err)
+						sigs <- syscall.SIGINT
 					}
 				}
 			}
@@ -110,7 +137,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 			if Token_debug {
 				Token_logger.Println("Coordinator cannot be reached with error: ", err)
 			}
-			log.Fatalln("Coordinator cannot be reached with error: ", err)
+			sigs <- syscall.SIGINT
 		}
 		msg_delay()
 		err = client.Call("API.ReturnToken", &index, nil)
@@ -118,7 +145,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 			if Token_debug {
 				Token_logger.Println("Token return failed with error: ", err)
 			}
-			log.Fatalln("Token return failed with error: ", err)
+			sigs <- syscall.SIGINT
 		}
 
 	}

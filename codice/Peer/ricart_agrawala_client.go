@@ -2,13 +2,19 @@ package main
 
 import (
 	"container/list"
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var s_clock int
@@ -78,8 +84,26 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 	if RA_debug {
 		RA_logger.Println("Process listening on ip", c.PeerIP, "and port ", c.PeerPort)
 	}
-	go http.Serve(lis, nil)
-	for i := 0; i < 5; i++ {
+	sigs := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		if RA_debug {
+			RA_logger.Println("Shutdown signal caught, peer service will stop")
+		}
+		cancel()
+		lis.Close()
+		fmt.Println("Peer", index, "shutdown")
+		os.Exit(0)
+	}()
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return http.Serve(lis, nil)
+	})
+
+	for true {
 		if RA_debug {
 			RA_logger.Println("Trying to enter critic section")
 		}
