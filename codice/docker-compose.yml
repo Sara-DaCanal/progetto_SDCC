@@ -5,8 +5,8 @@ services:
     container_name: registerer
     hostname: registerer
     build:
-      context: ./Registerer
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./Dockerfiles/registration_docker
     env_file: .env
     networks:
       - mutual_exclusion_network
@@ -15,8 +15,8 @@ services:
 
   peer_s:
     build:
-      context: ./Peer
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./Dockerfiles/peer_docker
     env_file: .env
     networks:
       - mutual_exclusion_network

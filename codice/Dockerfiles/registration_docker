@@ -1,0 +1,8 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.17-alpine
+ADD . /reg
+WORKDIR /reg
+COPY . .
+RUN go mod download
+RUN go build -o ./main ./Registerer
+ENTRYPOINT ["./main"]
