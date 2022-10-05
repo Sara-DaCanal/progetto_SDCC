@@ -1,3 +1,7 @@
+/* ***************************************** *
+ * Registration service for mutual exclusion *
+ * ***************************************** */
+
 package main
 
 import (
@@ -19,13 +23,17 @@ import (
 
 type Reg_api int
 
-var processList []Peer
-var processNumber int
-var current int
-var exAlgo Algorithm
-var reg_debug bool
-var reg_logger *log.Logger
+//global variables
+var processList []Peer     //list of ip and port of participants
+var processNumber int      //number of process that will be accepted
+var current int            //current process accepted
+var exAlgo Algorithm       //algorithm to use for mutual exclusion
+var reg_debug bool         //verbose flag
+var reg_logger *log.Logger //logger
 
+/* ********************* *
+ * Set user input params *
+ * ********************* */
 func getParam() {
 	if reg_debug {
 		reg_logger.Println("Starting new registration group")
@@ -50,16 +58,25 @@ func getParam() {
 	}
 }
 
+/* ***************************************** *
+ * Set reply information for joining request *
+ * ***************************************** */
 func sendReply(args Peer, reply *Registration_reply) {
 	processList[current] = args
 	(*reply).Alg = exAlgo
 	(*reply).Index = current
 	current++
 }
+
+/* ********************************** *
+ * Api for receiving joining requests *
+ * ********************************** */
 func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 	if reg_debug {
 		reg_logger.Println("Someone is trying to register")
 	}
+
+	//start coordinator if the required algorithm is centralized
 	if exAlgo == TOKEN && current == 0 {
 		if reg_debug {
 			reg_logger.Println("Master process for centralized token algorithm started")
@@ -67,16 +84,23 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 		go Master(processNumber, reg_debug)
 	}
 	if current >= processNumber {
+
+		//refuse connection if too many peer are already present
 		(*reply).Alg = NULL
 		if reg_debug {
 			reg_logger.Println("permission denied, too many process")
 		}
 	} else if current < processNumber-1 {
+
+		//accept connection request
 		sendReply(*args, reply)
 		for current < processNumber {
+			//wait for all enough request before sending a reply
 			time.Sleep(time.Microsecond)
 		}
 		(*reply).Peer = processList
+
+		//generate quorum for maekawa algorithm if necessary
 		if exAlgo == QUORUM {
 			(*reply).Mask = Qgen(processNumber)
 		} else {
@@ -84,6 +108,11 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 		}
 	} else {
 
+		//accept last request and send reply
+		sendReply(*args, reply)
+		(*reply).Peer = processList
+
+		//generate quorum for maekawa algorithm if necessary
 		if exAlgo == QUORUM {
 			(*reply).Mask = Qgen(processNumber)
 		} else {
@@ -92,26 +121,23 @@ func (r *Reg_api) CanIJoin(args *Peer, reply *Registration_reply) error {
 		if reg_debug {
 			reg_logger.Println("Mutual exclusion group completed")
 		}
-
-		sendReply(*args, reply)
-		(*reply).Peer = processList
-		msg_delay()
-
 	}
+	msg_delay()
 	return nil
 }
 
 func main() {
 	fmt.Println("Registration service is up")
-	rand.Seed(123456789)
+
+	//init random generator for delays
+	rand.Seed(time.Now().UnixNano())
+
+	//check if verbose mode is enabled and init log file if necessary
+	reg_debug = false
+	reg_logger = log.Default()
 	if os.Getenv("VERBOSE") == "1" {
 		reg_debug = true
 		fmt.Println("Debug mode is enabled, program log can be found in /log/Registration.log")
-	} else {
-		reg_debug = false
-		reg_logger = log.Default()
-	}
-	if reg_debug {
 		var err error
 		reg_logger, err = InitLogger("Registration")
 		if err != nil {
@@ -119,17 +145,21 @@ func main() {
 		}
 		reg_logger.Println("Registration service starting in debug mode")
 	}
+	//read user input params
 	getParam()
+
+	//read configuration
 	var c Conf
 	c.readConf(reg_logger, reg_debug)
 
-	fmt.Println("Registration is starting...")
+	//init variables and signal handler for shutdown
 	current = 0
 	processList = make([]Peer, processNumber)
 	sigs := make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
-
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	//cancel context on shutdown
 	go func() {
 		<-sigs
 		if reg_debug {
@@ -138,6 +168,9 @@ func main() {
 		cancel()
 	}()
 
+	fmt.Println("Registration is starting...")
+
+	//set up listening for incoming connection
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(c.RegPort))
 	if err != nil {
 		if reg_debug {
@@ -149,12 +182,15 @@ func main() {
 	if reg_debug {
 		reg_logger.Println("Registration service listening on port", c.RegPort)
 	}
+
+	//expose api on open port
 	rpc.RegisterName("RegistrationApi", new(Reg_api))
 	rpc.HandleHTTP()
 	g, gCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return http.Serve(lis, nil)
 	})
+	//close listener on shutdown
 	g.Go(func() error {
 		<-gCtx.Done()
 		return lis.Close()

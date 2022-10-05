@@ -2,11 +2,12 @@
 
 usage() {
     echo "Usage: ${0} [OPTIONS]"
-    echo "Options:"
-    echo -e "\tFLAG   VALUES                    DESCRIPTION"
-    echo -e "\t-n     <number-of-peers>         Number of peers to spawn"
-    echo -e "\t-a     [auth | token | quorum]   Algorithm to use"
-    echo -e "\t-v                               Verbose modality"
+    echo "Options:\n"
+    echo  "\tFLAG   VALUES                    DESCRIPTION"
+    echo  "\t-n     <number-of-peers>         Number of peers to spawn"
+    echo  "\t-a     [auth | token | quorum]   Algorithm to use"
+    echo  "\t-v                               Verbose modality"
+    echo  "\t-d     [slow | medium | fast]    Level of net congestion" 
 }
 
 SIZE=3
@@ -16,23 +17,32 @@ DC_FILE="./docker-compose.yml"
 ENV_FILE="./.env"
 LOG_DIR="./logs"
 ALG=""
+DELAY="fast"
 
 # Parse command line options
-while getopts ":h:n:a:v" opt; do
+while getopts ":h:n:a:v:d:" opt; do
     case ${opt} in
         h ) 
             usage
             exit 0
             ;;
         n )
-            PROVIDED_SIZE=1
             SIZE=$OPTARG
+            if [ "$SIZE" -ge "3" ]; then
+                PROVIDED_SIZE=1   
+            else
+                echo "Not enough peer, using default value"
+            fi
             ;;
+            
         v )
             VERBOSE=1
             ;;
         a )
             ALG=${OPTARG}
+            ;;
+        d )
+            DELAY=${OPTARG}
             ;;
         ? )
             usage
@@ -44,35 +54,42 @@ shift $((OPTIND -1))
 # Dump of configurations 
 if [ "${ALG}" != "auth" ] && [ "${ALG}" != "quorum" ] && [ "${ALG}" != "token" ]; then
     echo "[!] Select a valid type of algorithm: auth | quorum | token"
-    #exit 1
+    exit 1
 fi
 
-echo -e "[+] SUMMARY"
+if [ "${DELAY}" != "fast" ] && [ "${DELAY}" != "medium" ] && [ "${DELAY}" != "slow" ]; then
+    echo "[!] Invalid net congestion parameter, using default (fast)"
+    DELAY="fast"
+fi
+
+echo  "[+] SUMMARY"
 
 if [ "${PROVIDED_SIZE}" == "0" ]; then
-    echo -e "\t[*] Number of peers...........: ${SIZE} (default value)"
+    echo  "\t[*] Number of peers...........: ${SIZE} (default value)"
 else
-    echo -e "\t[*] Number of peers...........: ${SIZE}"
+    echo  "\t[*] Number of peers...........: ${SIZE}"
 fi
  
 if [ "$VERBOSE" == "1" ]; then
-    echo -e "\t[*] Verbose output on log.....: ENABLED"
+    echo  "\t[*] Verbose output on log.....: ENABLED"
 else 
-    echo -e "\t[*] Verbose output on log.....: DISABLED"
+    echo  "\t[*] Verbose output on log.....: DISABLED"
 fi
 
-echo -e "\t[*] Type of service...........: ${ALG}"
-echo -e "\t[*] Environment variables file: ${ENV_FILE}"
-echo -e "\t[*] YAML file.................: ${DC_FILE}"
+echo  "\t[*] Type of service...........: ${ALG}"
+echo  "\t[*] Environment variables file: ${ENV_FILE}"
+echo  "\t[*] YAML file.................: ${DC_FILE}"
+echo  "\t[*] Delay.....................: ${DELAY}"
 
 # Load environment file
 echo "VERBOSE=${VERBOSE}" > ${ENV_FILE}
 echo "ALG=\"${ALG}\"" >> ${ENV_FILE}
 echo "N=${SIZE}" >> ${ENV_FILE}
+echo "DELAY=${DELAY}" >> ${ENV_FILE}
 echo "[+] Created environment file for docker-compose"
 
 # Run containers
-echo -e "[+] Startup ${SIZE} peers, sequencer and register services ..."
+echo "[+] Startup ${SIZE} peers, sequencer and register services ..."
 rm -d -r ${LOG_DIR}
 mkdir ${LOG_DIR}
 docker compose build

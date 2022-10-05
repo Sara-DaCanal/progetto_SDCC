@@ -1,3 +1,6 @@
+/* ************************** *
+ * Maekawa algorithm for peer *
+ * ************************** */
 package main
 
 import (
@@ -18,26 +21,32 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var state State
-var voted bool
-var my_quorum Quorum
-var my_index int
-var my_peer []Peer
-var M_logger *log.Logger
-var M_debug bool
-var inquire_sent bool
-var failed int
-var locking_req Maekawa_req
-var seq_num int
+//global variables
+var state State             //state: either held, wanted or released
+var voted bool              //vote avaiable to the peer
+var my_quorum Quorum        //quorum of the peer
+var my_index int            //peer's index
+var my_peer []Peer          //other peers list
+var M_logger *log.Logger    //logger
+var M_debug bool            //verbose flag
+var inquire_sent bool       //flag to memorize wheter the inquire for a particular request has been sent
+var failed int              //flag to memorize how many failed response have been received for a request
+var locking_req Maekawa_req //current locking request
+var seq_num int             //sequence number for next request
+var my_reqList = list.New() //list of pending requests
 
-var my_reqList = list.New()
-
+/* ******************************* *
+ * Init varible again upon release *
+ * ******************************* */
 func releaseVariable() {
 	voted = false
 	inquire_sent = false
 	locking_req = Maekawa_req{1000, 1000}
 }
 
+/* ********************************* *
+ * Api to receive an inquire request *
+ * ********************************* */
 func (api *Peer_Api) Inquire(args *int, reply *bool) error {
 
 	//process an inquire request
@@ -66,6 +75,9 @@ func (api *Peer_Api) Inquire(args *int, reply *bool) error {
 	return nil
 }
 
+/* ************************ *
+ * Send a request to quorum *
+ * ************************ */
 func sendRequest(req Maekawa_req) {
 	state = WANTED
 	//write reply variable
@@ -109,6 +121,9 @@ func sendRequest(req Maekawa_req) {
 	}
 }
 
+/* ************************ *
+ * Api to receive a request *
+ * ************************ */
 func (api *Peer_Api) Request_m(args *Maekawa_req, reply *bool) error {
 	*reply = false //init as false, turn to true if necessary
 	//process request
@@ -250,6 +265,9 @@ func (api *Peer_Api) Request_m(args *Maekawa_req, reply *bool) error {
 	return nil
 }
 
+/* ********************** *
+ * Api to receive a reply *
+ * ********************** */
 func (api *Peer_Api) Reply_m(args *int, reply *int) error {
 	if M_debug {
 		M_logger.Println("vote arrived from process", *args)
@@ -260,6 +278,9 @@ func (api *Peer_Api) Reply_m(args *int, reply *int) error {
 	return nil
 }
 
+/* ************************ *
+ * Api to receive a release *
+ * ************************ */
 func (api *Peer_Api) Release(args *int, reply *bool) error {
 
 	//process a release
@@ -495,8 +516,5 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 				M_logger.Println("Available to vote")
 			}
 		}
-	}
-	fmt.Println("FINISH")
-	for true {
 	}
 }

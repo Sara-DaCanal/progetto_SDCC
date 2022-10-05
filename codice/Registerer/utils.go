@@ -1,3 +1,6 @@
+/* ************************* *
+ * Utils file for registerer *
+ * ************************* */
 package main
 
 import (
@@ -5,18 +8,20 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"math/rand"
-	"net"
 	"os"
 	"time"
 )
 
+/* ************************************** *
+ * Vectorial clock struct and its methods *
+ * ************************************** */
 type Clock struct {
 	len   int
 	value []int
 }
 
+//init function for vectorial clock
 func (c *Clock) New(n int) {
 	(*c).len = n
 	(*c).value = make([]int, n)
@@ -24,6 +29,8 @@ func (c *Clock) New(n int) {
 		(*c).value[i] = 0
 	}
 }
+
+//check which is smaller between two clocks
 func (c Clock) Min(T []int, index int) bool {
 	for i, element := range c.value {
 		if index != i && element < T[i] {
@@ -33,37 +40,9 @@ func (c Clock) Min(T []int, index int) bool {
 	return true
 }
 
-/*type voter struct {
-	index int
-	vote  bool
-}*/
-
-type Quorum struct {
-	//v   []voter
-	len   int
-	enter int
-}
-
-func (q *Quorum) Init(index int, n int) {
-	app := math.Round(math.Sqrt(float64(n)))
-	k := int(app)
-	(*q).len = k
-	(*q).enter = 0
-	/*(*q).v = make([]voter, k)
-	for i := 0; i < k; i++ {
-		(*q).v[i].index = (index + i) % n
-		(*q).v[i].vote = false
-	}*/
-}
-
-type State int
-
-const (
-	RELEASED = iota
-	WANTED
-	HELD
-)
-
+/* **************************************** *
+ * Algorithm data type with possible values *
+ * **************************************** */
 type Algorithm int
 
 const (
@@ -73,6 +52,9 @@ const (
 	NULL
 )
 
+/* ***************************************************** *
+ * Struct used to send request from token to coordinator *
+ * ***************************************************** */
 type Req struct {
 	P         int
 	Timestamp []int
@@ -80,6 +62,9 @@ type Req struct {
 	Port      int
 }
 
+/* ********************************************** *
+ * Struct used to reply to a registration request *
+ * ********************************************** */
 type Registration_reply struct {
 	Peer  []Peer
 	Alg   Algorithm
@@ -87,11 +72,17 @@ type Registration_reply struct {
 	Mask  []int
 }
 
+/* ************************************* *
+ * Struct used to save peers information *
+ * ************************************* */
 type Peer struct {
 	IP   string
 	Port int
 }
 
+/* *************************** *
+ * quorum generating functions *
+ * *************************** */
 func adjust(r int) int {
 	switch r % 3 {
 	case 0:
@@ -143,6 +134,9 @@ func Qgen(n int) []int {
 	return quorum
 }
 
+/* ************************************************* *
+ * Struct to save config information and its methods *
+ * ************************************************* */
 type Conf struct {
 	RegPort    int    `json:"reg_port"`
 	MasterPort int    `json:"master_port"`
@@ -152,6 +146,7 @@ type Conf struct {
 	PeerIP     string `json:"peer_ip"`
 }
 
+//read config from json file
 func (c *Conf) readConf(l *log.Logger, v bool) {
 	jsonFile, err := os.Open("./config.json")
 	if err != nil {
@@ -186,6 +181,9 @@ func (c *Conf) readConf(l *log.Logger, v bool) {
 	}
 }
 
+/* **************************** *
+ * Initialize log file function *
+ * **************************** */
 func InitLogger(name string) (*log.Logger, error) {
 	logFile, err := os.OpenFile(
 		fmt.Sprintf("../logs/%v.log", name),
@@ -199,19 +197,24 @@ func InitLogger(name string) (*log.Logger, error) {
 	return my_log, nil
 }
 
-func GetOutboundIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP.String()
-
-}
-
+/* ****************************************** *
+ * Simulate net congestion condition function *
+ * ****************************************** */
 func msg_delay() {
-	d := rand.Intn(2000)
-	time.Sleep(time.Duration(d) * time.Millisecond)
+	delay := os.Getenv("DELAY")
+	var d int
+	switch delay {
+	case "fast":
+		d = rand.Intn(88000)
+		d = d + 2000
+		break
+	case "medium":
+		d = rand.Intn(440000)
+		d = 60000 + d
+		break
+	case "slow":
+		d = rand.Intn(9700000)
+		d = 300000 + d
+	}
+	time.Sleep(time.Duration(d) * time.Microsecond)
 }

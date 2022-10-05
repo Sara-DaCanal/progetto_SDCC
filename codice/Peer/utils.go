@@ -5,24 +5,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"time"
 )
 
+/* ************************************** *
+ * Vectorial clock struct and its methods *
+ * ************************************** */
 type Clock struct {
 	len   int
 	value []int
 }
 
+//init function for vectorial clock
 func (c *Clock) New(n int) {
 	(*c).len = n
 	(*c).value = make([]int, n)
 }
+
+//check which is smaller between two clocks
 func (c Clock) Min(T []int, index int) bool {
 	for i, element := range c.value {
 		if index != i && element < T[i] {
@@ -32,11 +36,19 @@ func (c Clock) Min(T []int, index int) bool {
 	return true
 }
 
-/*type voter struct {
-	index int
-	vote  bool
-}*/
+/* ******************************* *
+ * Ricart Agrawala request message *
+ * ******************************* */
+type Msg struct {
+	Id    int
+	Clock int
+	IP    string
+	Port  int
+}
 
+/* ****************************************** *
+ * Struct to save quorum info and its methods *
+ * ****************************************** */
 type Quorum struct {
 	v     []Peer
 	len   int
@@ -44,6 +56,7 @@ type Quorum struct {
 	reply int
 }
 
+//init quorum method
 func (q *Quorum) Init(index int, n int, peer []Peer, mask []int) {
 	k := 0
 	for _, element := range mask {
@@ -64,6 +77,9 @@ func (q *Quorum) Init(index int, n int, peer []Peer, mask []int) {
 	}
 }
 
+/* ************************************ *
+ * State data type with possible values *
+ * ************************************ */
 type State int
 
 const (
@@ -72,6 +88,9 @@ const (
 	HELD
 )
 
+/* **************************************** *
+ * Algorithm data type with possible values *
+ * **************************************** */
 type Algorithm int
 
 const (
@@ -81,6 +100,9 @@ const (
 	NULL
 )
 
+/* ********************************** *
+ * Critic section processing function *
+ * ********************************** */
 func CriticSection(l *log.Logger, v bool) {
 	if v {
 		l.Println("Critic section entered")
@@ -96,6 +118,9 @@ func CriticSection(l *log.Logger, v bool) {
 
 }
 
+/* ***************************************************** *
+ * Struct used to send request from token to coordinator *
+ * ***************************************************** */
 type Req struct {
 	P         int
 	Timestamp []int
@@ -103,11 +128,15 @@ type Req struct {
 	Port      int
 }
 
+/* ************************************** *
+ * Maekawa request message and its method *
+ * ************************************** */
 type Maekawa_req struct {
 	P          int
 	Sequence_n int
 }
 
+//obtain smallest maekawa req upon all
 func (r Maekawa_req) isSmallest(l *list.List, locking Maekawa_req) bool {
 	if locking.Sequence_n < r.Sequence_n || (locking.Sequence_n == r.Sequence_n && locking.P < r.Sequence_n) {
 		return false
@@ -123,11 +152,17 @@ func (r Maekawa_req) isSmallest(l *list.List, locking Maekawa_req) bool {
 	return true
 }
 
+/* ************************************* *
+ * Struct used to save peers information *
+ * ************************************* */
 type Peer struct {
 	IP   string
 	Port int
 }
 
+/* ********************************************** *
+ * Struct used to reply to a registration request *
+ * ********************************************** */
 type Registration_reply struct {
 	Peer  []Peer
 	Alg   Algorithm
@@ -135,6 +170,9 @@ type Registration_reply struct {
 	Mask  []int
 }
 
+/* ************************************************* *
+ * Struct to save config information and its methods *
+ * ************************************************* */
 type Conf struct {
 	RegPort    int    `json:"reg_port"`
 	MasterPort int    `json:"master_port"`
@@ -144,6 +182,7 @@ type Conf struct {
 	PeerIP     string `json:"peer_ip"`
 }
 
+//read config from json file
 func (c *Conf) readConf(l *log.Logger, v bool) {
 	jsonFile, err := os.Open("./config.json")
 	if err != nil {
@@ -178,6 +217,9 @@ func (c *Conf) readConf(l *log.Logger, v bool) {
 	}
 }
 
+/* **************************** *
+ * Find index of a peer in list *
+ * **************************** */
 func findIndex(list []Peer, elem Peer) int {
 	for i := range list {
 		if list[i] == elem {
@@ -187,6 +229,9 @@ func findIndex(list []Peer, elem Peer) int {
 	return -1
 }
 
+/* *************************************** *
+ * Function to find next request in a list *
+ * *************************************** */
 func nextRequest(l list.List) *list.Element {
 	min := Maekawa_req{10000, 10000}
 	var min_elem *list.Element
@@ -201,6 +246,9 @@ func nextRequest(l list.List) *list.Element {
 	return min_elem
 }
 
+/* **************************** *
+ * Initialize log file function *
+ * **************************** */
 func InitLogger(name string) (*log.Logger, error) {
 	logFile, err := os.OpenFile(
 		fmt.Sprintf("../logs/%v.log", name),
@@ -214,6 +262,9 @@ func InitLogger(name string) (*log.Logger, error) {
 	return my_log, nil
 }
 
+/* ************** *
+ * Obtain peer ip *
+ * ************** */
 func GetOutboundIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -226,20 +277,24 @@ func GetOutboundIP() string {
 
 }
 
-func getPublicIP() (string, error) {
-	resp, err := http.Get("https://ifconfig.me")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
-}
-
+/* ****************************************** *
+ * Simulate net congestion condition function *
+ * ****************************************** */
 func msg_delay() {
-	d := rand.Intn(2000)
-	time.Sleep(time.Duration(d) * time.Millisecond)
+	delay := os.Getenv("DELAY")
+	var d int
+	switch delay {
+	case "fast":
+		d = rand.Intn(88000)
+		d = d + 2000
+		break
+	case "medium":
+		d = rand.Intn(440000)
+		d = 60000 + d
+		break
+	case "slow":
+		d = rand.Intn(9700000)
+		d = 300000 + d
+	}
+	time.Sleep(time.Duration(d) * time.Microsecond)
 }
