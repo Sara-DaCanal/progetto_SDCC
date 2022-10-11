@@ -46,28 +46,40 @@ func Abs(x int) int {
 	return x
 }
 
+/* ********************* *
+ * Mutual exclusion test *
+ * ********************* */
 func TestExclusive(t *testing.T) {
 
+	//open log directory
 	logFiles, err := os.ReadDir("../logs")
 	if err != nil {
 		t.Fatal("Can't open log directory:", err)
 	}
 	layout := "2006/01/02 15:04:05"
+
+	//iterate over log files
 	for e := range logFiles {
 		item := logFiles[e]
+
+		//open peer logfiles
 		if strings.Contains(item.Name(), "Peer") {
 			file, err := os.OpenFile("../logs/"+item.Name(), os.O_RDONLY, 0666)
 			if err != nil {
 				t.Fatal("Can't open file:", err)
 			}
 			defer file.Close()
-			scanner := bufio.NewScanner(file)
 
+			//scan peer logfiles
+			scanner := bufio.NewScanner(file)
 			var my_elem entry
 			for scanner.Scan() {
 				count := 0
+
+				//init a new entry for every critic section entrance in log
 				if strings.Contains(scanner.Text(), "Critic section entered") {
 					if count != 0 {
+						//if there are two consecutive entrances in the same file, fails
 						t.Fatal("Entering again befor exiting")
 					}
 					my_elem.name = item.Name()
@@ -79,6 +91,8 @@ func TestExclusive(t *testing.T) {
 					my_elem.enter = time_parsed
 					count++
 				}
+
+				//close and add new entry when exiting message is found
 				if strings.Contains(scanner.Text(), "Exiting critic section") {
 					count = 0
 					timeString := scanner.Text()[:19]
@@ -92,19 +106,28 @@ func TestExclusive(t *testing.T) {
 			}
 		}
 	}
+
+	//scan list
 	for timeList.Len() > 1 {
 		min := getMin(&timeList)
 		for e := timeList.Front(); e != nil; e = e.Next() {
 			item := e.Value.(entry)
 			if item.enter.Before(min.exit) && !item.enter.Equal(min.exit) {
+				//if there is a new entrance before an exit fails
 				t.Fatal("Text failed: process", item.name, "entering in critic section before release from process", min.name)
 			}
 		}
 	}
+	//otherwise test successful
 	fmt.Println("Critic section has been obtained by only one process at a time")
 }
 
+/* ************* *
+ * Fairness Test *
+ * ************* */
 func TestFairness(t *testing.T) {
+
+	//open log dir
 	logFiles, err := os.ReadDir("../logs")
 	if err != nil {
 		t.Fatal("Can't open log directory:", err)
@@ -116,6 +139,8 @@ func TestFairness(t *testing.T) {
 	} else {
 		length = len(logFiles) - 1
 	}
+
+	//make array with different peers
 	names := make([]counter, length)
 	for e := range logFiles {
 		item := logFiles[e]
@@ -124,6 +149,8 @@ func TestFairness(t *testing.T) {
 			names[e].n = 0
 		}
 	}
+
+	//scan list, for every entry increment corresponding peer counter
 	for e := orderedTimeList.Front(); e != nil; e = e.Next() {
 		item := e.Value.(entry)
 		for n := range names {
@@ -131,10 +158,12 @@ func TestFairness(t *testing.T) {
 				names[n].n++
 			}
 		}
+
+		//check for too much difference between counters
 		for i := 0; i < len(names)-1; i++ {
 			for j := 1; j < len(names); j++ {
 				if Abs(names[i].n-names[j].n) > 2 {
-					t.Fatal("Not fair")
+					t.Fatal("Not fair: process" names[i].name ,"and", names[j].name, "have too much difference")
 				}
 			}
 		}
