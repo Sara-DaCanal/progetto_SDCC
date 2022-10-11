@@ -105,6 +105,8 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 		if RA_debug {
 			RA_logger.Println("Shutdown signal caught, peer service will stop")
 		}
+		for my_state == HELD {
+		}
 		cancel()
 		lis.Close()
 		fmt.Println("Peer", index, "shutdown")
@@ -177,6 +179,7 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 		//enter critic section
 		my_state = HELD
 		CriticSection(RA_logger, RA_debug)
+		my_state = RELEASED
 
 		//upon exiting from critic section, send reply to all waiting processes
 		for e := reqQueue.Front(); e != nil; e = e.Next() {
@@ -203,7 +206,6 @@ func RicartAgrawala(index int, c Conf, peer []Peer, logger *log.Logger, debug bo
 
 		//reset variables
 		reqQueue = list.New()
-		my_state = RELEASED
 		replies = 0
 	}
 }

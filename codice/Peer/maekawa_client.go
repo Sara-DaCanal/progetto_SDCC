@@ -378,6 +378,8 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 		if M_debug {
 			M_logger.Println("Shutdown signal caught, peer service will stop")
 		}
+		for state == HELD {
+		}
 		cancel()
 		lis.Close()
 		fmt.Println("Peer", index, "shutdown")
@@ -437,8 +439,8 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 		CriticSection(M_logger, M_debug)
 
 		//release critic section
-		failed = 0
 		state = RELEASED
+		failed = 0
 		my_quorum.enter = 0
 		my_quorum.reply = 0
 

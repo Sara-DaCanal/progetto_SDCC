@@ -20,7 +20,7 @@ ALG=""
 DELAY="fast"
 
 # Parse command line options
-while getopts ":h:n:a:v:d:" opt; do
+while getopts "hn:a:vd:" opt; do
     case ${opt} in
         h ) 
             usage
@@ -28,11 +28,7 @@ while getopts ":h:n:a:v:d:" opt; do
             ;;
         n )
             SIZE=$OPTARG
-            if [ "$SIZE" -ge "3" ]; then
-                PROVIDED_SIZE=1   
-            else
-                echo "Not enough peer, using default value"
-            fi
+            PROVIDED_SIZE=1   
             ;;
             
         v )

@@ -23,6 +23,7 @@ var my_clock Clock           //vectorial clock
 var my_token bool            //token
 var Token_logger *log.Logger //logger
 var Token_debug bool         //verbose flag
+var critic bool              //flag for saving if the process is in critic section
 
 /* *********************** *
  * Api for receiving token *
@@ -54,6 +55,7 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 	Token_debug = debug
 	N := len(peer)
 	my_clock.New(N)
+	critic = false
 
 	fmt.Println("Starting...")
 	if Token_debug {
@@ -84,7 +86,8 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 		if Token_debug {
 			Token_logger.Println("Shutdown signal caught, peer service will stop")
 		}
-
+		for critic == true {
+		}
 		cancel()
 		lis.Close()
 		fmt.Println("Peer", index, "shutdown")
@@ -146,7 +149,9 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 
 		if my_token {
 			//if token is immediately received, enter critic section
+			critic = true
 			CriticSection(Token_logger, Token_debug)
+			critic = false
 			my_token = false
 		} else {
 			//else wait for the token to enter
@@ -155,7 +160,9 @@ func Slave(index int, c Conf, peer []Peer, logger *log.Logger, debug bool) {
 			}
 			for !my_token {
 			}
+			critic = true
 			CriticSection(Token_logger, Token_debug)
+			critic = false
 			my_token = false
 		}
 		if Token_debug {
