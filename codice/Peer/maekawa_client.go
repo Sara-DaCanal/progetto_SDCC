@@ -253,10 +253,11 @@ func (api *Peer_Api) Request_m(args *Maekawa_req, reply *bool) error {
 		}
 	} else {
 		//if vote is available
+		voted = true
 		if M_debug {
 			M_logger.Println("vote was available and was granted to requesting process")
 		}
-		voted = true
+
 		locking_req.P = (*args).P
 		locking_req.Sequence_n = (*args).Sequence_n
 		*reply = true
@@ -293,6 +294,10 @@ func (api *Peer_Api) Release(args *int, reply *bool) error {
 		e := nextRequest(*my_reqList)
 		my_reqList.Remove(e)
 		item := e.Value.(Maekawa_req)
+		voted = true
+		locking_req.P = item.P
+		locking_req.Sequence_n = item.Sequence_n
+
 		//if reply to another process
 		if item.P != my_index {
 			client, err := rpc.DialHTTP("tcp", my_peer[item.P].IP+":"+strconv.Itoa(my_peer[item.P].Port))
@@ -310,9 +315,6 @@ func (api *Peer_Api) Release(args *int, reply *bool) error {
 				}
 				log.Fatalln("Reply cannot be sent to process", item.P, "with error:", err)
 			}
-			locking_req.P = item.P
-			locking_req.Sequence_n = item.Sequence_n
-			voted = true
 			if M_debug {
 				M_logger.Println("Vote sent to process", item.P)
 			}
@@ -322,9 +324,6 @@ func (api *Peer_Api) Release(args *int, reply *bool) error {
 			if M_debug {
 				M_logger.Println("Process voted for itself")
 			}
-			locking_req.P = item.P
-			locking_req.Sequence_n = item.Sequence_n
-			voted = true
 			my_quorum.enter++
 		}
 	} else {
@@ -418,10 +417,11 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 
 		} else {
 			//if vote is available
+			voted = true
 			if M_debug {
 				M_logger.Println("Process voted for itself")
 			}
-			voted = true
+
 			locking_req.P = req.P
 			locking_req.Sequence_n = req.Sequence_n
 			//process a reply
@@ -439,8 +439,9 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 		CriticSection(M_logger, M_debug)
 
 		//release critic section
-		state = RELEASED
 		failed = 0
+		state = RELEASED
+
 		my_quorum.enter = 0
 		my_quorum.reply = 0
 
@@ -480,6 +481,9 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 
 			//if reply should be sent to someone
 			if item.P != my_index {
+				voted = true
+				locking_req.P = item.P
+				locking_req.Sequence_n = item.Sequence_n
 				client, err := rpc.DialHTTP("tcp", peer[item.P].IP+":"+strconv.Itoa(peer[item.P].Port))
 				if err != nil {
 					if M_debug {
@@ -495,9 +499,7 @@ func Maekawa(index int, c Conf, peer []Peer, mask []int, logger *log.Logger, deb
 					}
 					log.Fatalln("Reply cannot be sent to process ", item.P, " with error: ", err)
 				}
-				voted = true
-				locking_req.P = item.P
-				locking_req.Sequence_n = item.Sequence_n
+
 				if M_debug {
 					M_logger.Println("Vote sent to process", item.P)
 				}

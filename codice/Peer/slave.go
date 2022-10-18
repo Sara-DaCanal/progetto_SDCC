@@ -39,6 +39,9 @@ func (api *Peer_Api) SendToken(args *bool, reply *int) error {
  * ****************************************************** */
 func (api *Peer_Api) ProgMsg(args *Req, reply *int) error {
 	//update the clock
+	if Token_debug {
+		Token_logger.Println("Program message received")
+	}
 	for i, element := range my_clock.value {
 		if element < (*args).Timestamp[i] {
 			my_clock.value[i] = (*args).Timestamp[i]

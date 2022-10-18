@@ -81,7 +81,7 @@ echo  "\t[*] Delay.....................: ${DELAY}"
 echo "VERBOSE=${VERBOSE}" > ${ENV_FILE}
 echo "ALG=\"${ALG}\"" >> ${ENV_FILE}
 echo "N=${SIZE}" >> ${ENV_FILE}
-echo "DELAY=${DELAY}" >> ${ENV_FILE}
+echo "DELAY=\"${DELAY}\"" >> ${ENV_FILE}
 echo "[+] Created environment file for docker-compose"
 
 # Run containers

@@ -163,10 +163,94 @@ func TestFairness(t *testing.T) {
 		for i := 0; i < len(names)-1; i++ {
 			for j := 1; j < len(names); j++ {
 				if Abs(names[i].n-names[j].n) > 2 {
-					t.Fatal("Not fair: process" names[i].name ,"and", names[j].name, "have too much difference")
+					t.Fatal("Not fair: process", names[i].name, "and", names[j].name, "have too much difference")
 				}
 			}
 		}
 	}
 	fmt.Println("Fairness is granted")
+}
+
+/* ************* *
+ * Liveness Test *
+ * ************* */
+func TestLiveness(t *testing.T) {
+	var initTime time.Time
+	var exitTime time.Time
+	count := false
+	layout := "2006/01/02 15:04:05"
+
+	//compute different accepted interval based on network congestion
+	var seconds time.Duration
+	delay := os.Getenv("DELAY")
+	switch delay {
+	case "fast":
+		seconds = 11 * time.Second
+		break
+	case "medium":
+		seconds = 14 * time.Second
+		break
+	case "slow":
+		seconds = 19 * time.Second
+		break
+	default:
+		fmt.Println(delay)
+	}
+
+	//open log directory
+	logFiles, err := os.ReadDir("../logs")
+	if err != nil {
+		t.Fatal("Can't open log directory:", err)
+	}
+
+	//iterate over log
+	for e := range logFiles {
+		item := logFiles[e]
+
+		//open peer logfiles
+		if strings.Contains(item.Name(), "Peer") {
+			file, err := os.OpenFile("../logs/"+item.Name(), os.O_RDONLY, 0666)
+			if err != nil {
+				t.Fatal("Can't open file:", err)
+			}
+			defer file.Close()
+
+			//scan peer logfiles
+			scanner := bufio.NewScanner(file)
+			prec := ""
+			for scanner.Scan() {
+
+				//search last message before shutting down
+				if strings.Contains(scanner.Text(), "Shutdown signal caught") {
+					timeString := prec[:19]
+					var err error
+					initTime, err = time.Parse(layout, timeString)
+					if err != nil {
+						t.Fatal("Non parsable string:", err)
+					}
+					timeString = scanner.Text()[:19]
+					exitTime, err = time.Parse(layout, timeString)
+					if err != nil {
+						t.Fatal("Non parsable string:", err)
+					}
+					count = true
+				}
+				prec = scanner.Text()
+			}
+			if count {
+				//compute difference between shutting down message and last message
+				if exitTime.Sub(initTime) > seconds {
+					fmt.Println(exitTime.Sub(initTime), seconds)
+					t.Fatal("Test failed for process", item.Name(), exitTime.Format(layout), initTime.Format(layout))
+					break
+				}
+			}
+			if !count {
+				t.Fatal("Shutting down message was never registered for process", item.Name())
+			}
+
+		}
+	}
+	fmt.Println("No dead-lock detected")
+
 }

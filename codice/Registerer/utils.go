@@ -205,7 +205,7 @@ func msg_delay() {
 	var d int
 	switch delay {
 	case "fast":
-		d = rand.Intn(88000)
+		d = rand.Intn(98000)
 		d = d + 2000
 		break
 	case "medium":
@@ -213,7 +213,7 @@ func msg_delay() {
 		d = 60000 + d
 		break
 	case "slow":
-		d = rand.Intn(9700000)
+		d = rand.Intn(4700000)
 		d = 300000 + d
 	}
 	time.Sleep(time.Duration(d) * time.Microsecond)

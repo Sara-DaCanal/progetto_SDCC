@@ -36,13 +36,18 @@ while getopts "hn:a:d:" opt; do
 done
 shift $((OPTIND -1))
 
-if [ ${SIZE} == "many" ]; then
+if [ ${SIZE} == "many" ] && [ ${DELAY} != "slow" ]; then
     ACTUALSIZE=5
+else 
+    if [ ${SIZE} == "many" ] && [ ${DELAY} == "slow" ]; then
+        ACTUALSIZE=3
+    fi
 fi
 
 sh launch.sh -n $ACTUALSIZE -a ${ALG} -v -d ${DELAY} &
-sleep 50
+sleep 60
 sh down.sh
 echo "\n\n"
 cd test
+export DELAY="${DELAY}"
 go test

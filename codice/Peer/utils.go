@@ -108,9 +108,9 @@ func CriticSection(l *log.Logger, v bool) {
 		l.Println("Critic section entered")
 	}
 	fmt.Println("Critic section obtained")
-	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(100)
-	time.Sleep((time.Duration)(n/10) * time.Second)
+	seconds := n / 10 * int(time.Second)
+	time.Sleep(time.Duration(seconds))
 	if v {
 		l.Println("Exiting critic section")
 	}
@@ -293,7 +293,7 @@ func msg_delay() {
 		d = 60000 + d
 		break
 	case "slow":
-		d = rand.Intn(9700000)
+		d = rand.Intn(4700000)
 		d = 300000 + d
 	}
 	time.Sleep(time.Duration(d) * time.Microsecond)
