@@ -4,15 +4,15 @@ usage() {
     echo "Usage: ${0} [OPTIONS]"
     echo "Options:\n"
     echo  "\tFLAG   VALUES                    DESCRIPTION"
-    echo  "\t-n     [one | many(5)]           Number of peers to spawn"
-    echo  "\t-a     [auth | token | quorum]   Algorithm to use"
-    echo  "\t-d     [slow | medium | fast]    Level of net congestion"
+    echo  "\t-n     [one | many(5)]           Number of peers to spawn (default many)"
+    echo  "\t-a     [auth | token | quorum]   Algorithm to use (default auth)"
+    echo  "\t-d     [slow | medium | fast]    Level of net congestion (default fast)"
 }
 
-SIZE=""
+SIZE="many"
 ACTUALSIZE=1
-ALG=""
-DELAY=""
+ALG="auth"
+DELAY="fast"
 
 while getopts "hn:a:d:" opt; do
     case ${opt} in

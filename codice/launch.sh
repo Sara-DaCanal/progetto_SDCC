@@ -85,7 +85,7 @@ echo "DELAY=\"${DELAY}\"" >> ${ENV_FILE}
 echo "[+] Created environment file for docker-compose"
 
 # Run containers
-echo "[+] Startup ${SIZE} peers, sequencer and register services ..."
+echo "[+] Startup ${SIZE} peers and register services ..."
 rm -d -r ${LOG_DIR}
 mkdir ${LOG_DIR}
 docker compose build
