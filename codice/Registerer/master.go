@@ -50,6 +50,7 @@ func (api *Api) GetRequest(args *Req, reply *bool) error {
 					*reply = true
 				} else {
 					//else send asyncronous reply to eligible process
+					my_time.value[item.P] = item.Timestamp[item.P]
 					new_reply := true
 					client, err := rpc.DialHTTP("tcp", item.IP+":"+strconv.Itoa(item.Port))
 					if err != nil {
