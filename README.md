@@ -2,7 +2,7 @@
 Progetto per il corso di Sistemi Distribuiti e Cloud Computing per la laurea magistrale in Ingegneria Informatica dell'Università di Roma Tor Vergata<br>
 
 ## Installazione
-Dopo aver scaricato la repository, si può avviare il programma usando lo script [launch.sh](launch.sh)
+Dopo aver scaricato la repository, si può avviare il programma usando lo script [launch.sh](codice/launch.sh)
 <br>Questo script può essere configurato con diversi flag:<br>
 - flag '-n' per specificare il numero di peer
 - flag '-a' per specificare l'algoritmo da usare
@@ -13,11 +13,11 @@ Dopo aver scaricato la repository, si può avviare il programma usando lo script
 <br>La velocità della rete può essere specificata come **fast**, **medium** o **slow**<br>
 
 ## Spegnimento
-Quando si desidera fermare l'esecuzione, avviare lo script [down.sh](down.sh)
+Quando si desidera fermare l'esecuzione, avviare lo script [down.sh](codice/down.sh)
 <br>Questo script spegnerà tutti i peer assicurandosi di non interromperli prima che la sezione critica venga rilasciata<br>
 
 ## Testing
-Per testare il funzionamento, si può avviare lo script [testing.sh](test/testing.sh)
+Per testare il funzionamento, si può avviare lo script [testing.sh](codice/test/testing.sh)
 <br>Questo script permette di effettuare un test in diverse condizioni specificabili tramite flag:<br>
 - flag '-n' per specificare se usare un solo peer o più peer contemporaneamente
 - flag '-a' per specificare l'algoritmo da usare
