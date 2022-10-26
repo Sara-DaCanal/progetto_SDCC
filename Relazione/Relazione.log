@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.10.11)  20 OCT 2022 11:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.10.11)  26 OCT 2022 09:40
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -344,7 +344,7 @@ Before submitting the final camera ready copy, remember to:
 Here is how much of TeX's memory you used:
  4160 strings out of 478268
  64933 string characters out of 5846346
- 373518 words of memory out of 5000000
+ 376773 words of memory out of 5000000
  22339 multiletter control sequences out of 15000+600000
  503083 words of font info for 88 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -356,7 +356,7 @@ r/local/texlive/2022/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/te
 xlive/2022/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/202
 2/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2022/texmf-di
 st/fonts/type1/urw/times/utmri8a.pfb>
-Output written on Relazione.pdf (4 pages, 108760 bytes).
+Output written on Relazione.pdf (4 pages, 108572 bytes).
 PDF statistics:
  51 PDF objects out of 1000 (max. 8388607)
  30 compressed objects within 1 object stream
